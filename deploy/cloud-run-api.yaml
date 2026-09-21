@@ -1,0 +1,60 @@
+# Template for `gcloud run services replace`. Substitute PROJECT_ID, REGION,
+# SQL_INSTANCE, and IMAGE. Prefer the gcloud commands in DEPLOY.md so secrets
+# are wired from Secret Manager rather than pasted here.
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: dukkan-api
+  annotations:
+    run.googleapis.com/ingress: all
+spec:
+  template:
+    metadata:
+      annotations:
+        run.googleapis.com/cloudsql-instances: PROJECT_ID:REGION:SQL_INSTANCE
+        autoscaling.knative.dev/minScale: "0"
+        autoscaling.knative.dev/maxScale: "4"
+    spec:
+      containerConcurrency: 80
+      timeoutSeconds: 300
+      containers:
+        - image: REGION-docker.pkg.dev/PROJECT_ID/dukkan/dukkan-api:latest
+          ports:
+            - containerPort: 8080
+          resources:
+            limits:
+              cpu: "1"
+              memory: 1Gi
+          env:
+            - name: DUKKAN_SEED_ENABLED
+              value: "false"
+            - name: DUKKAN_OTP_DEV_CODE
+              value: "false"
+            - name: DUKKAN_DB_URL
+              value: jdbc:postgresql:///dukkan?cloudSqlInstance=PROJECT_ID:REGION:SQL_INSTANCE&socketFactory=com.google.cloud.sql.postgres.SocketFactory
+            - name: DUKKAN_CORS_ORIGINS
+              value: https://dukkan-ui-HASH.REGION.run.app
+            - name: DUKKAN_DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: dukkan-db-user
+                  key: latest
+            - name: DUKKAN_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: dukkan-db-password
+                  key: latest
+            - name: DUKKAN_JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: dukkan-jwt-secret
+                  key: latest
+          startupProbe:
+            httpGet:
+              path: /api/health
+            periodSeconds: 5
+            failureThreshold: 24
+          livenessProbe:
+            httpGet:
+              path: /api/health
+            periodSeconds: 30

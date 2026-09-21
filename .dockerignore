@@ -1,0 +1,20 @@
+# Git / IDE
+.git
+.gitignore
+.idea
+*.iml
+.vscode
+
+# Secrets and local data
+.env
+.env.*
+!.env.example
+data/
+
+# Build output
+target/
+
+# Docs / local compose (image is the API only)
+docker-compose.yml
+DEPLOY.md
+README.md

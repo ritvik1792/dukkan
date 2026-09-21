@@ -1,0 +1,49 @@
+server:
+  port: ${PORT:8080}
+  error:
+    include-message: always
+    include-binding-errors: never
+    include-stacktrace: never
+
+spring:
+  config:
+    import: optional:file:.env[.properties]
+  datasource:
+    url: ${DUKKAN_DB_URL:jdbc:postgresql://localhost:5432/dukkan}
+    username: ${DUKKAN_DB_USER:dukkan}
+    password: ${DUKKAN_DB_PASSWORD:dukkan}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+  flyway:
+    enabled: true
+  servlet:
+    multipart:
+      max-file-size: 8MB
+      max-request-size: 16MB
+
+app:
+  cors:
+    # Comma-separated. Local defaults; Cloud Run must set the live UI origin.
+    allowed-origins: ${DUKKAN_CORS_ORIGINS:http://localhost:3000,http://localhost:3001,http://localhost:3002}
+  jwt:
+    secret: ${DUKKAN_JWT_SECRET:dukkan-dev-secret-change-before-production-32b}
+    expiration-ms: 86400000
+  requests:
+    scheduler-ms: ${DUKKAN_REQUEST_SCHEDULER_MS:15000}
+  otp:
+    expose-dev-code: ${DUKKAN_OTP_DEV_CODE:false}
+    ttl-seconds: 300
+    min-resend-seconds: 20
+  uploads:
+    dir: ${DUKKAN_UPLOAD_DIR:data/uploads}
+  nominatim:
+    base-url: ${DUKKAN_NOMINATIM_URL:https://nominatim.openstreetmap.org}
+    user-agent: ${DUKKAN_NOMINATIM_USER_AGENT:Dukkan/1.0 (in.dukkan marketplace; local-dev)}
+    cache-ttl-hours: ${DUKKAN_NOMINATIM_CACHE_TTL_HOURS:24}
+    timeout-ms: ${DUKKAN_NOMINATIM_TIMEOUT_MS:8000}

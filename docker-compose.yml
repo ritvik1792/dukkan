@@ -1,0 +1,20 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: dukkan-postgres
+    environment:
+      POSTGRES_DB: dukkan
+      POSTGRES_USER: dukkan
+      POSTGRES_PASSWORD: dukkan
+    ports:
+      - "5432:5432"
+    volumes:
+      - dukkan_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dukkan -d dukkan"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  dukkan_pgdata:
