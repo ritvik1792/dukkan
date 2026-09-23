@@ -100,7 +100,7 @@ public class ApplicationController {
         shop.setName(request.businessName().trim());
         shop.setOwnerUserId(user.getId());
         shop.setDescription(request.notes() == null || request.notes().isBlank()
-                ? request.businessName().trim() + " on Dukkan"
+                ? request.businessName().trim() + " on GreenOwl"
                 : request.notes().trim());
         shop.setAddress(request.address().trim());
         shop.setLat(lat);
@@ -119,6 +119,14 @@ public class ApplicationController {
         shop.setOpen(true);
         shop.setOpenTime("09:00");
         shop.setCloseTime("21:00");
+        shop.setProviderType(in.dukkan.domain.ProviderType.PRODUCT_BUSINESS);
+        shop.setProductsAllowed(true);
+        shop.setServicesAllowed(false);
+        shop.setBookingsAllowed(false);
+        shop.setServiceRequestsAllowed(false);
+        shop.setOrdersAllowed(true);
+        shop.setQuickDeliveryAllowed(false);
+        shop.setVerificationStatus(in.dukkan.domain.VerificationStatus.UNVERIFIED);
         if (request.categoryIds() != null) {
             shop.setCategoryIds(new HashSet<>(request.categoryIds()));
         }

@@ -1,5 +1,6 @@
 package in.dukkan.config;
 
+import in.dukkan.security.JwtAuthEntryPoint;
 import in.dukkan.security.JwtAuthFilter;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Value;
@@ -22,28 +23,60 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 @EnableMethodSecurity
 public class SecurityConfig {
 
+    /** Keep in sync with {@link JwtAuthFilter} public-path checks. */
+    public static final String[] PUBLIC_PATHS = {
+        "/api/health",
+        "/api/auth/login",
+        "/api/auth/signup",
+        "/api/auth/otp/request",
+        "/api/auth/otp/verify",
+        "/error"
+    };
+
+    /** Anonymous storefront discovery. Keep in sync with {@link JwtAuthFilter}. */
+    public static final String[] PUBLIC_GET_PATHS = {
+        "/api/categories",
+        "/api/neighborhoods",
+        "/api/shops/**",
+        "/api/catalog/**",
+        "/api/listings/**",
+        "/api/ads",
+        "/api/settings",
+        "/api/partners",
+        "/api/reviews",
+        "/api/coupons",
+        "/api/geo/**",
+        "/api/search",
+        "/api/providers/**",
+        "/api/services/**"
+    };
+
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
 
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http, JwtAuthFilter jwtAuthFilter)
+    public SecurityFilterChain filterChain(
+            HttpSecurity http, JwtAuthFilter jwtAuthFilter, JwtAuthEntryPoint jwtAuthEntryPoint)
             throws Exception {
         http.csrf(csrf -> csrf.disable());
         http.cors(Customizer.withDefaults());
         http.sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
+        http.exceptionHandling(ex -> ex.authenticationEntryPoint(jwtAuthEntryPoint));
         http.authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/health", "/api/auth/login", "/api/auth/signup",
-                        "/api/auth/otp/request", "/api/auth/otp/verify", "/error")
+                .requestMatchers(HttpMethod.OPTIONS, "/**")
                 .permitAll()
-                .requestMatchers("/uploads/**").permitAll()
-                .requestMatchers(HttpMethod.GET, "/api/categories", "/api/neighborhoods", "/api/shops/**",
-                        "/api/catalog/**", "/api/listings/**", "/api/ads", "/api/settings", "/api/partners",
-                        "/api/reviews", "/api/coupons", "/api/geo/**")
+                .requestMatchers(PUBLIC_PATHS)
                 .permitAll()
-                .requestMatchers("/api/admin/**").hasRole("ADMIN")
-                .anyRequest().authenticated());
+                .requestMatchers("/uploads/**")
+                .permitAll()
+                .requestMatchers(HttpMethod.GET, PUBLIC_GET_PATHS)
+                .permitAll()
+                .requestMatchers("/api/admin/**")
+                .hasRole("ADMIN")
+                .anyRequest()
+                .authenticated());
         http.addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }

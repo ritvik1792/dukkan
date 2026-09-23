@@ -40,7 +40,12 @@ import org.springframework.web.server.ResponseStatusException;
 public class ProductRequestService {
 
     public record CreateRequestInput(
-            String catalogProductId, String listingId, String queryText, Double buyerLat, Double buyerLng) {}
+            String catalogProductId,
+            String listingId,
+            String queryText,
+            Double buyerLat,
+            Double buyerLng,
+            BigDecimal maxBudget) {}
 
     public record MerchantRespondInput(
             String decision, BigDecimal unitPrice, Integer availableQty, String listingId, String message) {}
@@ -84,6 +89,9 @@ public class ProductRequestService {
         if (input.buyerLat() == null || input.buyerLng() == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "buyerLat and buyerLng are required");
         }
+        if (input.maxBudget() != null && input.maxBudget().compareTo(BigDecimal.ZERO) <= 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "maxBudget must be positive when set");
+        }
         ParsedRequest parsed = requestParser.parse(input.catalogProductId(), input.listingId(), input.queryText());
         PlatformSettings config = settings.findById("default").orElseThrow();
         Instant now = Instant.now();
@@ -94,6 +102,7 @@ public class ProductRequestService {
         request.setCatalogProductId(parsed.catalogProductId());
         request.setListingId(parsed.listingId());
         request.setQueryText(parsed.queryText());
+        request.setMaxBudget(input.maxBudget());
         request.setBuyerLat(input.buyerLat());
         request.setBuyerLng(input.buyerLng());
         request.setStatus(ProductRequestStatus.OPEN);
@@ -102,9 +111,13 @@ public class ProductRequestService {
         request.setUpdatedAt(now);
         request.setExpiresAt(now.plusSeconds(Math.max(60, config.getOfferExpirySeconds())));
         requests.save(request);
-        writeEvent(request.getId(), null, null, buyer.getId(), "REQUEST_CREATED", Map.of(
-                "catalogProductId", parsed.catalogProductId(),
-                "listingId", parsed.listingId() == null ? "" : parsed.listingId()));
+        Map<String, Object> createdPayload = new HashMap<>();
+        createdPayload.put("catalogProductId", parsed.catalogProductId());
+        createdPayload.put("listingId", parsed.listingId() == null ? "" : parsed.listingId());
+        if (input.maxBudget() != null) {
+            createdPayload.put("maxBudget", input.maxBudget().toPlainString());
+        }
+        writeEvent(request.getId(), null, null, buyer.getId(), "REQUEST_CREATED", createdPayload);
 
         List<RankedCandidate> candidates =
                 matching.findCandidates(parsed.catalogProductId(), input.buyerLat(), input.buyerLng());

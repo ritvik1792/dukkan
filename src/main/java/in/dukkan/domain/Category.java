@@ -2,6 +2,8 @@ package in.dukkan.domain;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
@@ -17,6 +19,10 @@ public class Category {
 
     @Column(nullable = false)
     private String emoji;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private CategoryKind kind = CategoryKind.PRODUCT;
 
     public String getId() {
         return id;
@@ -40,5 +46,13 @@ public class Category {
 
     public void setEmoji(String emoji) {
         this.emoji = emoji;
+    }
+
+    public CategoryKind getKind() {
+        return kind;
+    }
+
+    public void setKind(CategoryKind kind) {
+        this.kind = kind;
     }
 }

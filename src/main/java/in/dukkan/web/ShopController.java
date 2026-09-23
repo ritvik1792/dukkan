@@ -91,11 +91,65 @@ public class ShopController {
         if (request.notifyStockConfirmation() != null) {
             shop.setNotifyStockConfirmation(request.notifyStockConfirmation());
         }
-        if (request.status() != null) {
+        if (request.name() != null && !request.name().isBlank()) {
+            shop.setName(request.name().trim());
+        }
+        if (request.description() != null) {
+            shop.setDescription(request.description().isBlank() ? null : request.description().trim());
+        }
+        if (request.address() != null && !request.address().isBlank()) {
+            shop.setAddress(request.address().trim());
+        }
+        if (request.lat() != null) {
+            shop.setLat(request.lat());
+        }
+        if (request.lng() != null) {
+            shop.setLng(request.lng());
+        }
+        if (request.imageUrl() != null) {
+            shop.setImageUrl(request.imageUrl().isBlank() ? null : request.imageUrl().trim());
+        }
+        if (request.serviceArea() != null) {
+            shop.setServiceArea(request.serviceArea().isBlank() ? null : request.serviceArea().trim());
+        }
+        if (request.profession() != null) {
+            shop.setProfession(request.profession().isBlank() ? null : request.profession().trim());
+        }
+        if (request.status() != null
+                || request.providerType() != null
+                || request.productsAllowed() != null
+                || request.servicesAllowed() != null
+                || request.bookingsAllowed() != null
+                || request.serviceRequestsAllowed() != null
+                || request.ordersAllowed() != null
+                || request.quickDeliveryAllowed() != null) {
             if (!access.isAdmin(user)) {
-                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only admin can change shop status");
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only admin can change provider status or capabilities");
             }
-            shop.setStatus(request.status());
+            if (request.status() != null) {
+                shop.setStatus(request.status());
+            }
+            if (request.providerType() != null) {
+                shop.setProviderType(request.providerType());
+            }
+            if (request.productsAllowed() != null) {
+                shop.setProductsAllowed(request.productsAllowed());
+            }
+            if (request.servicesAllowed() != null) {
+                shop.setServicesAllowed(request.servicesAllowed());
+            }
+            if (request.bookingsAllowed() != null) {
+                shop.setBookingsAllowed(request.bookingsAllowed());
+            }
+            if (request.serviceRequestsAllowed() != null) {
+                shop.setServiceRequestsAllowed(request.serviceRequestsAllowed());
+            }
+            if (request.ordersAllowed() != null) {
+                shop.setOrdersAllowed(request.ordersAllowed());
+            }
+            if (request.quickDeliveryAllowed() != null) {
+                shop.setQuickDeliveryAllowed(request.quickDeliveryAllowed());
+            }
         }
         return shopViews.toView(shops.save(shop));
     }

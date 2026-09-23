@@ -6,6 +6,7 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import java.math.BigDecimal;
 import java.time.Instant;
 
 @Entity
@@ -26,6 +27,10 @@ public class ProductRequest {
 
     @Column(name = "query_text")
     private String queryText;
+
+    /** Optional buyer ceiling ("under ₹X"). Null when not provided. */
+    @Column(name = "max_budget", precision = 12, scale = 2)
+    private BigDecimal maxBudget;
 
     @Column(name = "buyer_lat", nullable = false)
     private double buyerLat;
@@ -87,6 +92,14 @@ public class ProductRequest {
 
     public void setQueryText(String queryText) {
         this.queryText = queryText;
+    }
+
+    public BigDecimal getMaxBudget() {
+        return maxBudget;
+    }
+
+    public void setMaxBudget(BigDecimal maxBudget) {
+        this.maxBudget = maxBudget;
     }
 
     public double getBuyerLat() {

@@ -134,10 +134,31 @@ class ProductRequestServiceTest {
                 .thenThrow(new ResponseStatusException(org.springframework.http.HttpStatus.BAD_REQUEST, "catalogProductId is required"));
         assertThrows(
                 ResponseStatusException.class,
-                () -> service.create(buyer, new CreateRequestInput(null, null, null, 28.6, 77.2)));
+                () -> service.create(buyer, new CreateRequestInput(null, null, null, 28.6, 77.2, null)));
         assertThrows(
                 ResponseStatusException.class,
-                () -> service.create(buyer, new CreateRequestInput("cat-1", null, null, null, 77.2)));
+                () -> service.create(buyer, new CreateRequestInput("cat-1", null, null, null, 77.2, null)));
+    }
+
+    @Test
+    void createPersistsOptionalMaxBudget() {
+        when(matching.findCandidates(anyString(), any(Double.class), any(Double.class)))
+                .thenReturn(List.of(new RankedCandidate(shopA, listingA, 0.5, 0.9)));
+
+        ProductRequest created = service.create(
+                buyer,
+                new CreateRequestInput("cat-1", "lst-a", null, 28.6, 77.2, new BigDecimal("250.00")));
+
+        assertEquals(new BigDecimal("250.00"), created.getMaxBudget());
+        assertEquals(ProductRequestStatus.AWAITING_OFFERS, created.getStatus());
+    }
+
+    @Test
+    void createRejectsNonPositiveMaxBudget() {
+        assertThrows(
+                ResponseStatusException.class,
+                () -> service.create(
+                        buyer, new CreateRequestInput("cat-1", "lst-a", null, 28.6, 77.2, BigDecimal.ZERO)));
     }
 
     @Test
@@ -148,7 +169,7 @@ class ProductRequestServiceTest {
                         new RankedCandidate(shopB, listingB, 0.8, 0.8)));
         config.setRequestWaveSize(1);
 
-        ProductRequest created = service.create(buyer, new CreateRequestInput("cat-1", "lst-a", null, 28.6, 77.2));
+        ProductRequest created = service.create(buyer, new CreateRequestInput("cat-1", "lst-a", null, 28.6, 77.2, null));
 
         assertEquals(ProductRequestStatus.AWAITING_OFFERS, created.getStatus());
         @SuppressWarnings("unchecked")

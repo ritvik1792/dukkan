@@ -97,6 +97,37 @@ public class Shop {
     @Column(name = "notify_stock_confirmation", nullable = false)
     private boolean notifyStockConfirmation = true;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "provider_type", nullable = false)
+    private ProviderType providerType = ProviderType.PRODUCT_BUSINESS;
+
+    @Column(name = "products_allowed", nullable = false)
+    private boolean productsAllowed = true;
+
+    @Column(name = "services_allowed", nullable = false)
+    private boolean servicesAllowed;
+
+    @Column(name = "bookings_allowed", nullable = false)
+    private boolean bookingsAllowed;
+
+    @Column(name = "service_requests_allowed", nullable = false)
+    private boolean serviceRequestsAllowed;
+
+    @Column(name = "orders_allowed", nullable = false)
+    private boolean ordersAllowed = true;
+
+    @Column(name = "quick_delivery_allowed", nullable = false)
+    private boolean quickDeliveryAllowed;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "verification_status", nullable = false)
+    private VerificationStatus verificationStatus = VerificationStatus.UNVERIFIED;
+
+    @Column(name = "service_area")
+    private String serviceArea;
+
+    private String profession;
+
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "shop_categories", joinColumns = @JoinColumn(name = "shop_id"))
     @Column(name = "category_id")
@@ -316,5 +347,85 @@ public class Shop {
 
     public void setNotifyStockConfirmation(boolean notifyStockConfirmation) {
         this.notifyStockConfirmation = notifyStockConfirmation;
+    }
+
+    public ProviderType getProviderType() {
+        return providerType;
+    }
+
+    public void setProviderType(ProviderType providerType) {
+        this.providerType = providerType;
+    }
+
+    public boolean isProductsAllowed() {
+        return productsAllowed;
+    }
+
+    public void setProductsAllowed(boolean productsAllowed) {
+        this.productsAllowed = productsAllowed;
+    }
+
+    public boolean isServicesAllowed() {
+        return servicesAllowed;
+    }
+
+    public void setServicesAllowed(boolean servicesAllowed) {
+        this.servicesAllowed = servicesAllowed;
+    }
+
+    public boolean isBookingsAllowed() {
+        return bookingsAllowed;
+    }
+
+    public void setBookingsAllowed(boolean bookingsAllowed) {
+        this.bookingsAllowed = bookingsAllowed;
+    }
+
+    public boolean isServiceRequestsAllowed() {
+        return serviceRequestsAllowed;
+    }
+
+    public void setServiceRequestsAllowed(boolean serviceRequestsAllowed) {
+        this.serviceRequestsAllowed = serviceRequestsAllowed;
+    }
+
+    public boolean isOrdersAllowed() {
+        return ordersAllowed;
+    }
+
+    public void setOrdersAllowed(boolean ordersAllowed) {
+        this.ordersAllowed = ordersAllowed;
+    }
+
+    public boolean isQuickDeliveryAllowed() {
+        return quickDeliveryAllowed;
+    }
+
+    public void setQuickDeliveryAllowed(boolean quickDeliveryAllowed) {
+        this.quickDeliveryAllowed = quickDeliveryAllowed;
+    }
+
+    public VerificationStatus getVerificationStatus() {
+        return verificationStatus;
+    }
+
+    public void setVerificationStatus(VerificationStatus verificationStatus) {
+        this.verificationStatus = verificationStatus;
+    }
+
+    public String getServiceArea() {
+        return serviceArea;
+    }
+
+    public void setServiceArea(String serviceArea) {
+        this.serviceArea = serviceArea;
+    }
+
+    public String getProfession() {
+        return profession;
+    }
+
+    public void setProfession(String profession) {
+        this.profession = profession;
     }
 }

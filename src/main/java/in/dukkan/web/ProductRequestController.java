@@ -29,7 +29,8 @@ public class ProductRequestController {
             String listingId,
             String queryText,
             @NotNull Double buyerLat,
-            @NotNull Double buyerLng) {}
+            @NotNull Double buyerLng,
+            BigDecimal maxBudget) {}
 
     public record RespondBody(
             @NotNull String decision,
@@ -59,7 +60,8 @@ public class ProductRequestController {
                         body.listingId(),
                         body.queryText(),
                         body.buyerLat(),
-                        body.buyerLng()));
+                        body.buyerLng(),
+                        body.maxBudget()));
         return requestDetail(request);
     }
 

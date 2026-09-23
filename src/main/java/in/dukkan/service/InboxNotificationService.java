@@ -8,8 +8,9 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 /**
- * V1: no push/FCM. Seller inbox is derived from request_shops with status NOTIFIED+.
- * This bean is still invoked so business logic has a stable hook.
+ * No push/FCM and no notifications table. Seller alerts are composed client-side from
+ * GET /api/merchant/requests (see dukkan-ui NotificationWatcher). This hook stays so
+ * wave notify still has a stable extension point.
  */
 @Service
 public class InboxNotificationService implements NotificationService {
@@ -19,10 +20,11 @@ public class InboxNotificationService implements NotificationService {
     @Override
     public void notifyMerchantOfRequest(ProductRequest request, RequestShop requestShop) {
         log.info(
-                "Merchant notify requestId={} shopId={} requestShopId={}",
+                "Merchant request ready for inbox requestId={} shopId={} requestShopId={} maxBudget={}",
                 request.getId(),
                 requestShop.getShopId(),
-                requestShop.getId());
+                requestShop.getId(),
+                request.getMaxBudget());
     }
 
     @Override
