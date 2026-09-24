@@ -7,7 +7,7 @@ import jakarta.persistence.Table;
 
 @Entity
 @Table(name = "advertisements")
-public class Advertisement {
+public class Advertisement extends AuditableEntity {
 
     @Id
     private String id;

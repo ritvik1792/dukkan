@@ -11,7 +11,7 @@ import java.time.Instant;
 
 @Entity
 @Table(name = "offers")
-public class Offer {
+public class Offer extends AuditableEntity {
 
     @Id
     private String id;

@@ -1,5 +1,12 @@
+# Shared defaults. Cloud Run stays prod-like via env (DUKKAN_DB_*, JWT, CORS)
+# even with no profile. Explicit profiles:
+#   local — localhost Postgres + local UI CORS (never Cloud SQL)
+#   prod  — Cloud SQL / Secret Manager env only
+# Commands: mvn spring-boot:run -Dspring-boot.run.profiles=local|prod
+
 server:
   port: ${PORT:8080}
+  forward-headers-strategy: framework
   error:
     include-message: always
     include-binding-errors: never
@@ -40,9 +47,11 @@ spring:
 
 app:
   cors:
-    # Comma-separated. Local defaults; Cloud Run must set the live UI origin.
+    # Comma-separated UI origins. Local defaults; Cloud Run must set the live UI origin.
     allowed-origins: ${DUKKAN_CORS_ORIGINS:http://localhost:3000,http://localhost:3001,http://localhost:3002}
   frontend-base-url: ${DUKKAN_FRONTEND_BASE_URL:http://localhost:3000}
+  # Absolute API origin for generated upload URLs. Empty = use the incoming request.
+  public-base-url: ${DUKKAN_PUBLIC_BASE_URL:}
   jwt:
     secret: ${DUKKAN_JWT_SECRET:dukkan-dev-secret-change-before-production-32b}
     expiration-ms: 86400000

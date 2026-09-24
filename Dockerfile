@@ -13,5 +13,6 @@ COPY --from=build --chown=dukkan:dukkan /src/target/dukkan-0.1.0.jar app.jar
 USER dukkan
 ENV PORT=8080
 ENV DUKKAN_UPLOAD_DIR=/tmp/dukkan-uploads
+ENV SPRING_PROFILES_ACTIVE=prod
 EXPOSE 8080
 ENTRYPOINT ["java", "-XX:MaxRAMPercentage=75.0", "-jar", "app.jar"]

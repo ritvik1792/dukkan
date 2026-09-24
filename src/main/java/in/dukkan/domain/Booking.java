@@ -10,7 +10,7 @@ import java.time.Instant;
 
 @Entity
 @Table(name = "bookings")
-public class Booking {
+public class Booking extends AuditableEntity {
 
     @Id
     private String id;
@@ -120,5 +120,19 @@ public class Booking {
 
     public void setUpdatedAt(Instant updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    @Override
+    public void onPrePersist() {
+        super.onPrePersist();
+        if (this.updatedAt == null) {
+            this.updatedAt = getLastUpdated();
+        }
+    }
+
+    @Override
+    public void onPreUpdate() {
+        super.onPreUpdate();
+        this.updatedAt = getLastUpdated();
     }
 }

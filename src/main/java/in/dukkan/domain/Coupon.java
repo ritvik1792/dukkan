@@ -8,7 +8,7 @@ import java.math.BigDecimal;
 
 @Entity
 @Table(name = "coupons")
-public class Coupon {
+public class Coupon extends AuditableEntity {
 
     @Id
     private String id;

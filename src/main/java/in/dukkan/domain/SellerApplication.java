@@ -16,7 +16,7 @@ import java.util.Set;
 
 @Entity
 @Table(name = "seller_applications")
-public class SellerApplication {
+public class SellerApplication extends AuditableEntity {
 
     @Id
     private String id;

@@ -20,9 +20,13 @@ public class UploadService {
     private static final Set<String> ALLOWED = Set.of("image/jpeg", "image/png", "image/webp", "image/gif");
 
     private final Path root;
+    private final String publicBaseUrl;
 
-    public UploadService(@Value("${app.uploads.dir}") String dir) {
+    public UploadService(
+            @Value("${app.uploads.dir}") String dir,
+            @Value("${app.public-base-url:}") String publicBaseUrl) {
         this.root = Path.of(dir).toAbsolutePath().normalize();
+        this.publicBaseUrl = publicBaseUrl == null ? "" : publicBaseUrl.replaceAll("/+$", "");
     }
 
     @PostConstruct
@@ -59,10 +63,15 @@ public class UploadService {
         } catch (IOException e) {
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Could not store image");
         }
-        String url = ServletUriComponentsBuilder.fromCurrentContextPath()
-                .path("/uploads/")
-                .path(filename)
-                .toUriString();
+        String url;
+        if (!publicBaseUrl.isBlank()) {
+            url = publicBaseUrl + "/uploads/" + filename;
+        } else {
+            url = ServletUriComponentsBuilder.fromCurrentContextPath()
+                    .path("/uploads/")
+                    .path(filename)
+                    .toUriString();
+        }
         return new UploadResponse(url, filename);
     }
 

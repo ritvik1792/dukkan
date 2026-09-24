@@ -13,7 +13,7 @@ import java.math.BigDecimal;
 
 @Entity
 @Table(name = "order_items")
-public class OrderItem {
+public class OrderItem extends AuditableEntity {
 
     @Id
     private String id;

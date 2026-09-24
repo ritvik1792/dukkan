@@ -17,7 +17,7 @@ import java.util.Set;
 
 @Entity
 @Table(name = "shops")
-public class Shop {
+public class Shop extends AuditableEntity {
 
     @Id
     private String id;

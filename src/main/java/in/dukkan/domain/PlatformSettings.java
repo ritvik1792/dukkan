@@ -7,7 +7,7 @@ import jakarta.persistence.Table;
 
 @Entity
 @Table(name = "platform_settings")
-public class PlatformSettings {
+public class PlatformSettings extends AuditableEntity {
 
     @Id
     private String id = "default";

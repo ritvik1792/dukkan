@@ -11,7 +11,7 @@ import java.time.LocalDate;
 
 @Entity
 @Table(name = "app_users")
-public class AppUser {
+public class AppUser extends AuditableEntity {
 
     @Id
     private String id;

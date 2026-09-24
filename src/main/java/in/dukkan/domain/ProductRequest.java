@@ -11,7 +11,7 @@ import java.time.Instant;
 
 @Entity
 @Table(name = "product_requests")
-public class ProductRequest {
+public class ProductRequest extends AuditableEntity {
 
     @Id
     private String id;
@@ -148,6 +148,20 @@ public class ProductRequest {
 
     public void setUpdatedAt(Instant updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    @Override
+    public void onPrePersist() {
+        super.onPrePersist();
+        if (this.updatedAt == null) {
+            this.updatedAt = getLastUpdated();
+        }
+    }
+
+    @Override
+    public void onPreUpdate() {
+        super.onPreUpdate();
+        this.updatedAt = getLastUpdated();
     }
 
     public Instant getExpiresAt() {

@@ -1,0 +1,23 @@
+# Profile: local
+# mvn spring-boot:run -Dspring-boot.run.profiles=local
+#
+# Always localhost Postgres (docker compose). Literals so a leftover Cloud SQL
+# DUKKAN_DB_URL in .env / the shell cannot point this profile at Google Cloud.
+
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/dukkan
+    username: dukkan
+    password: dukkan
+
+app:
+  cors:
+    allowed-origins: http://localhost:3000,http://localhost:3001,http://localhost:3002
+  frontend-base-url: http://localhost:3000
+  public-base-url: http://localhost:8080
+  jwt:
+    secret: ${DUKKAN_JWT_SECRET:dukkan-dev-secret-change-before-production-32b}
+  otp:
+    expose-dev-code: true
+  uploads:
+    dir: ${DUKKAN_UPLOAD_DIR:data/uploads}

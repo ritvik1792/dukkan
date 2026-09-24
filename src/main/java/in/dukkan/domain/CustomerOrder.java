@@ -20,7 +20,7 @@ import java.util.List;
 
 @Entity
 @Table(name = "customer_orders")
-public class CustomerOrder {
+public class CustomerOrder extends AuditableEntity {
 
     @Id
     private String id;

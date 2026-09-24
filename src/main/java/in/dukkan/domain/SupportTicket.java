@@ -14,7 +14,7 @@ import java.util.List;
 
 @Entity
 @Table(name = "support_tickets")
-public class SupportTicket {
+public class SupportTicket extends AuditableEntity {
 
     @Id
     private String id;

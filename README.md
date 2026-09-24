@@ -39,9 +39,23 @@ Do **not** set `DUKKAN_SEED_*` passwords. That path is gone. Create accounts in 
 
 ## Run the API (migrates only)
 
+Two profiles. The process always listens on `PORT` (default 8080).
+
+**Local** — localhost Postgres (docker compose), CORS for the local UI. Does not use Cloud SQL, even if `DUKKAN_DB_URL` is set in `.env`.
+
 ```bash
-mvn spring-boot:run
+mvn spring-boot:run -Dspring-boot.run.profiles=local
 ```
+
+Same as `make local`. API: `http://localhost:8080`. Point `dukkan-ui` `NEXT_PUBLIC_API_URL` at that (Cloud Build `_API_URL` is the prod Cloud Run API).
+
+**Prod** — Cloud SQL + Secret Manager env. No passwords in the repo.
+
+```bash
+mvn spring-boot:run -Dspring-boot.run.profiles=prod
+```
+
+Same as `make prod`. Requires `DUKKAN_DB_URL` (Cloud SQL JDBC), `DUKKAN_DB_USER`, `DUKKAN_DB_PASSWORD`, `DUKKAN_JWT_SECRET`, `DUKKAN_CORS_ORIGINS`. Optional: `DUKKAN_FRONTEND_BASE_URL`, `DUKKAN_PUBLIC_BASE_URL` (defaults to `https://dukkan-api-zh6npfj54a-el.a.run.app`). Cloud Run already sets these and the image default profile is `prod`.
 
 On boot Flyway runs `V1`–`V5` against PostgreSQL (tables plus categories / neighborhoods / default settings). **No login rows** are inserted.
 
@@ -84,7 +98,7 @@ To wipe local data and start over:
 ```bash
 docker compose down -v
 docker compose up -d postgres
-mvn spring-boot:run
+mvn spring-boot:run -Dspring-boot.run.profiles=local
 ```
 
 ## Google Cloud

@@ -1,5 +1,6 @@
 package in.dukkan.config;
 
+import in.dukkan.security.ClientSourceFilter;
 import in.dukkan.security.JwtAuthEntryPoint;
 import in.dukkan.security.JwtAuthFilter;
 import java.util.List;
@@ -60,7 +61,10 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain filterChain(
-            HttpSecurity http, JwtAuthFilter jwtAuthFilter, JwtAuthEntryPoint jwtAuthEntryPoint)
+            HttpSecurity http,
+            ClientSourceFilter clientSourceFilter,
+            JwtAuthFilter jwtAuthFilter,
+            JwtAuthEntryPoint jwtAuthEntryPoint)
             throws Exception {
         http.csrf(csrf -> csrf.disable());
         http.cors(Customizer.withDefaults());
@@ -79,6 +83,7 @@ public class SecurityConfig {
                 .hasRole("ADMIN")
                 .anyRequest()
                 .authenticated());
+        http.addFilterBefore(clientSourceFilter, UsernamePasswordAuthenticationFilter.class);
         http.addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }

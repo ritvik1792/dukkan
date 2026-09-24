@@ -10,7 +10,7 @@ import java.time.Instant;
 
 @Entity
 @Table(name = "service_requests")
-public class ServiceRequest {
+public class ServiceRequest extends AuditableEntity {
 
     @Id
     private String id;
@@ -153,5 +153,19 @@ public class ServiceRequest {
 
     public void setUpdatedAt(Instant updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    @Override
+    public void onPrePersist() {
+        super.onPrePersist();
+        if (this.updatedAt == null) {
+            this.updatedAt = getLastUpdated();
+        }
+    }
+
+    @Override
+    public void onPreUpdate() {
+        super.onPreUpdate();
+        this.updatedAt = getLastUpdated();
     }
 }

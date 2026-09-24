@@ -1,0 +1,29 @@
+# Profile: prod
+# mvn spring-boot:run -Dspring-boot.run.profiles=prod
+#
+# JDBC / JWT / CORS come from env or Secret Manager — no localhost DB fallback
+# and no passwords in this file. Typical Cloud SQL URL (Cloud Run socket):
+#   jdbc:postgresql:///dukkan?cloudSqlInstance=PROJECT:REGION:INSTANCE&socketFactory=com.google.cloud.sql.postgres.SocketFactory
+# The process still listens on PORT (8080). public-base-url is the Cloud Run API
+# host used in absolute links, not the bind address.
+
+spring:
+  datasource:
+    url: ${DUKKAN_DB_URL}
+    username: ${DUKKAN_DB_USER}
+    password: ${DUKKAN_DB_PASSWORD}
+
+app:
+  cors:
+    allowed-origins: ${DUKKAN_CORS_ORIGINS}
+  # Password-reset emails. Prefer the UI origin; falls back to CORS if unset.
+  frontend-base-url: ${DUKKAN_FRONTEND_BASE_URL:${DUKKAN_CORS_ORIGINS}}
+  public-base-url: ${DUKKAN_PUBLIC_BASE_URL:https://dukkan-api-zh6npfj54a-el.a.run.app}
+  jwt:
+    secret: ${DUKKAN_JWT_SECRET}
+  password-reset:
+    secret: ${DUKKAN_PASSWORD_RESET_SECRET:${DUKKAN_JWT_SECRET}}
+  otp:
+    expose-dev-code: false
+  uploads:
+    dir: ${DUKKAN_UPLOAD_DIR:/tmp/dukkan-uploads}

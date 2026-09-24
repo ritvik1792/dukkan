@@ -26,6 +26,8 @@ spec:
               cpu: "1"
               memory: 1Gi
           env:
+            - name: SPRING_PROFILES_ACTIVE
+              value: prod
             - name: DUKKAN_SEED_ENABLED
               value: "false"
             - name: DUKKAN_OTP_DEV_CODE

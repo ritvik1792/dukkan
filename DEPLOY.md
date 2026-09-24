@@ -158,12 +158,14 @@ gcloud run deploy dukkan-api \
   --memory=1Gi \
   --add-cloudsql-instances="$INSTANCE_CONN" \
   --set-secrets="DUKKAN_DB_USER=dukkan-db-user:latest,DUKKAN_DB_PASSWORD=dukkan-db-password:latest,DUKKAN_JWT_SECRET=dukkan-jwt-secret:latest" \
-  --set-env-vars="DUKKAN_DB_URL=jdbc:postgresql:///dukkan?cloudSqlInstance=${INSTANCE_CONN}&socketFactory=com.google.cloud.sql.postgres.SocketFactory,DUKKAN_SEED_ENABLED=false,DUKKAN_OTP_DEV_CODE=false,DUKKAN_UPLOAD_DIR=/tmp/dukkan-uploads,DUKKAN_CORS_ORIGINS=http://localhost:3000"
+  --set-env-vars="SPRING_PROFILES_ACTIVE=prod,DUKKAN_DB_URL=jdbc:postgresql:///dukkan?cloudSqlInstance=${INSTANCE_CONN}&socketFactory=com.google.cloud.sql.postgres.SocketFactory,DUKKAN_SEED_ENABLED=false,DUKKAN_OTP_DEV_CODE=false,DUKKAN_UPLOAD_DIR=/tmp/dukkan-uploads,DUKKAN_CORS_ORIGINS=http://localhost:3000"
 
 export API_URL="$(gcloud run services describe dukkan-api --region="$REGION" --format='value(status.url)')"
 echo "$API_URL"
 curl -s "${API_URL}/api/health"
 ```
+
+The API image defaults to Spring profile `prod` (Cloud SQL via `DUKKAN_DB_URL`, not localhost). Local laptops use `mvn spring-boot:run -Dspring-boot.run.profiles=local` — see README.
 
 You want `"status":"ok"` and `"database":"up"`. Flyway has already created tables (and categories / neighborhoods from `V5__reference_data.sql`). There are **no** login rows yet.
 

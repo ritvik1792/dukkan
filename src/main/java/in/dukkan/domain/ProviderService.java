@@ -18,7 +18,7 @@ import java.util.List;
 
 @Entity
 @Table(name = "services")
-public class ProviderService {
+public class ProviderService extends AuditableEntity {
 
     @Id
     private String id;
@@ -188,6 +188,20 @@ public class ProviderService {
 
     public void setUpdatedAt(Instant updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    @Override
+    public void onPrePersist() {
+        super.onPrePersist();
+        if (this.updatedAt == null) {
+            this.updatedAt = getLastUpdated();
+        }
+    }
+
+    @Override
+    public void onPreUpdate() {
+        super.onPreUpdate();
+        this.updatedAt = getLastUpdated();
     }
 
     public List<String> getImageUrls() {
