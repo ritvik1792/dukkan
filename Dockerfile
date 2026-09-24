@@ -6,9 +6,12 @@ RUN mvn -B -DskipTests package
 
 FROM eclipse-temurin:21-jre
 WORKDIR /app
-RUN useradd --system --uid 10001 dukkan
-COPY --from=build /src/target/dukkan-0.1.0.jar app.jar
+RUN useradd --system --uid 10001 dukkan \
+    && mkdir -p /app/data/uploads \
+    && chown -R dukkan:dukkan /app
+COPY --from=build --chown=dukkan:dukkan /src/target/dukkan-0.1.0.jar app.jar
 USER dukkan
 ENV PORT=8080
+ENV DUKKAN_UPLOAD_DIR=/tmp/dukkan-uploads
 EXPOSE 8080
 ENTRYPOINT ["java", "-XX:MaxRAMPercentage=75.0", "-jar", "app.jar"]

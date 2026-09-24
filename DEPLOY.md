@@ -158,7 +158,7 @@ gcloud run deploy dukkan-api \
   --memory=1Gi \
   --add-cloudsql-instances="$INSTANCE_CONN" \
   --set-secrets="DUKKAN_DB_USER=dukkan-db-user:latest,DUKKAN_DB_PASSWORD=dukkan-db-password:latest,DUKKAN_JWT_SECRET=dukkan-jwt-secret:latest" \
-  --set-env-vars="DUKKAN_DB_URL=jdbc:postgresql:///dukkan?cloudSqlInstance=${INSTANCE_CONN}&socketFactory=com.google.cloud.sql.postgres.SocketFactory,DUKKAN_SEED_ENABLED=false,DUKKAN_OTP_DEV_CODE=false,DUKKAN_CORS_ORIGINS=http://localhost:3000"
+  --set-env-vars="DUKKAN_DB_URL=jdbc:postgresql:///dukkan?cloudSqlInstance=${INSTANCE_CONN}&socketFactory=com.google.cloud.sql.postgres.SocketFactory,DUKKAN_SEED_ENABLED=false,DUKKAN_OTP_DEV_CODE=false,DUKKAN_UPLOAD_DIR=/tmp/dukkan-uploads,DUKKAN_CORS_ORIGINS=http://localhost:3000"
 
 export API_URL="$(gcloud run services describe dukkan-api --region="$REGION" --format='value(status.url)')"
 echo "$API_URL"
@@ -244,7 +244,7 @@ That is Unix-socket access through the Cloud SQL Java connector (no public IP re
 - `DUKKAN_OTP_DEV_CODE=true` — would return OTP codes in the JSON response.
 - A short `DUKKAN_JWT_SECRET` — use the Secret Manager value (32+ characters).
 
-Local disk uploads (`DUKKAN_UPLOAD_DIR`) are **ephemeral** on Cloud Run. Add Cloud Storage later if you need durable photos.
+Local disk uploads (`DUKKAN_UPLOAD_DIR`) are **ephemeral** on Cloud Run. The image defaults to `/tmp/dukkan-uploads` because the process runs as a non-root user and cannot create `/app/data`. Add Cloud Storage later if you need durable photos.
 
 ## Template YAML
 

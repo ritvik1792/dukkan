@@ -100,7 +100,7 @@ public class ApplicationController {
         shop.setName(request.businessName().trim());
         shop.setOwnerUserId(user.getId());
         shop.setDescription(request.notes() == null || request.notes().isBlank()
-                ? request.businessName().trim() + " on GreenOwl"
+                ? request.businessName().trim() + " on pinkCarrot"
                 : request.notes().trim());
         shop.setAddress(request.address().trim());
         shop.setLat(lat);

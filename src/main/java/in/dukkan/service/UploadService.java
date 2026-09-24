@@ -26,8 +26,16 @@ public class UploadService {
     }
 
     @PostConstruct
-    public void init() throws IOException {
-        Files.createDirectories(root);
+    public void init() {
+        try {
+            Files.createDirectories(root);
+        } catch (IOException e) {
+            throw new IllegalStateException(
+                    "Cannot create upload directory "
+                            + root
+                            + ". Set DUKKAN_UPLOAD_DIR to a writable path (Cloud Run: /tmp/dukkan-uploads).",
+                    e);
+        }
     }
 
     public record UploadResponse(String url, String filename) {}

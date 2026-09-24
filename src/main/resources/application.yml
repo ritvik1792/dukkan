@@ -26,14 +26,32 @@ spring:
     multipart:
       max-file-size: 8MB
       max-request-size: 16MB
+  mail:
+    host: ${DUKKAN_MAIL_HOST:}
+    port: ${DUKKAN_MAIL_PORT:587}
+    username: ${DUKKAN_MAIL_USERNAME:}
+    password: ${DUKKAN_MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: ${DUKKAN_MAIL_SMTP_AUTH:true}
+          starttls:
+            enable: ${DUKKAN_MAIL_SMTP_STARTTLS:true}
 
 app:
   cors:
     # Comma-separated. Local defaults; Cloud Run must set the live UI origin.
     allowed-origins: ${DUKKAN_CORS_ORIGINS:http://localhost:3000,http://localhost:3001,http://localhost:3002}
+  frontend-base-url: ${DUKKAN_FRONTEND_BASE_URL:http://localhost:3000}
   jwt:
     secret: ${DUKKAN_JWT_SECRET:dukkan-dev-secret-change-before-production-32b}
     expiration-ms: 86400000
+  password-reset:
+    # Prefer a dedicated secret; falls back to the JWT secret for local dig.
+    secret: ${DUKKAN_PASSWORD_RESET_SECRET:${DUKKAN_JWT_SECRET:dukkan-dev-secret-change-before-production-32b}}
+    ttl-minutes: ${DUKKAN_PASSWORD_RESET_TTL_MINUTES:45}
+  mail:
+    from: ${DUKKAN_MAIL_FROM:noreply@pinkcarrot.local}
   requests:
     scheduler-ms: ${DUKKAN_REQUEST_SCHEDULER_MS:15000}
   otp:

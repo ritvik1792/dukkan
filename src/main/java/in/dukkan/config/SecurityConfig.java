@@ -30,6 +30,8 @@ public class SecurityConfig {
         "/api/auth/signup",
         "/api/auth/otp/request",
         "/api/auth/otp/verify",
+        "/api/auth/forgot-password",
+        "/api/auth/reset-password",
         "/error"
     };
 

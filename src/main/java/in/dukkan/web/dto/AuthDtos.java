@@ -14,7 +14,7 @@ public class AuthDtos {
     public record SignupRequest(
             @NotBlank String name,
             @Email @NotBlank String email,
-            String phone,
+            @NotBlank String phone,
             @NotBlank @Size(min = 6) String password) {}
 
     public record OtpRequest(String phone, String email, String purpose) {}
@@ -22,6 +22,14 @@ public class AuthDtos {
     public record OtpRequestResponse(String destination, String purpose, Instant expiresAt, String devCode) {}
 
     public record OtpVerifyRequest(String phone, String email, @NotBlank String code, String purpose) {}
+
+    public record ForgotPasswordRequest(@Email @NotBlank String email) {}
+
+    public record ForgotPasswordResponse(String message) {}
+
+    public record ResetPasswordRequest(@NotBlank String token, @NotBlank @Size(min = 6) String password) {}
+
+    public record ResetPasswordResponse(String message) {}
 
     public record UpdateProfileRequest(
             String name, String email, String phone, LocalDate dob, String pinCode, Integer shopRadiusKm) {}

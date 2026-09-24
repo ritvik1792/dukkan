@@ -6,6 +6,7 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import java.time.Instant;
 import java.time.LocalDate;
 
 @Entity
@@ -40,6 +41,10 @@ public class AppUser {
 
     @Column(name = "shop_radius_km")
     private Integer shopRadiusKm;
+
+    /** Null until a future phone OTP verification flow sets it. */
+    @Column(name = "phone_verified_at")
+    private Instant phoneVerifiedAt;
 
     public String getId() {
         return id;
@@ -119,5 +124,13 @@ public class AppUser {
 
     public void setShopRadiusKm(Integer shopRadiusKm) {
         this.shopRadiusKm = shopRadiusKm;
+    }
+
+    public Instant getPhoneVerifiedAt() {
+        return phoneVerifiedAt;
+    }
+
+    public void setPhoneVerifiedAt(Instant phoneVerifiedAt) {
+        this.phoneVerifiedAt = phoneVerifiedAt;
     }
 }

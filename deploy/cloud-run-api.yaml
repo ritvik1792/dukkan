@@ -30,6 +30,8 @@ spec:
               value: "false"
             - name: DUKKAN_OTP_DEV_CODE
               value: "false"
+            - name: DUKKAN_UPLOAD_DIR
+              value: /tmp/dukkan-uploads
             - name: DUKKAN_DB_URL
               value: jdbc:postgresql:///dukkan?cloudSqlInstance=PROJECT_ID:REGION:SQL_INSTANCE&socketFactory=com.google.cloud.sql.postgres.SocketFactory
             - name: DUKKAN_CORS_ORIGINS

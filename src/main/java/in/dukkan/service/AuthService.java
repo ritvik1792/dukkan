@@ -11,6 +11,7 @@ import in.dukkan.web.dto.AuthDtos.SignupRequest;
 import in.dukkan.web.dto.AuthDtos.UpdateProfileRequest;
 import in.dukkan.web.dto.AuthDtos.UserResponse;
 import java.util.Locale;
+import java.util.regex.Pattern;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -19,6 +20,9 @@ import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class AuthService {
+
+    private static final Pattern EMAIL_PATTERN =
+            Pattern.compile("^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$");
 
     private final UserRepository users;
     private final PasswordEncoder encoder;
@@ -41,15 +45,29 @@ public class AuthService {
 
     @Transactional
     public AuthResponse signup(SignupRequest request) {
-        if (users.existsByEmailIgnoreCase(request.email())) {
+        String email = request.email() == null ? "" : request.email().trim().toLowerCase(Locale.ROOT);
+        if (!EMAIL_PATTERN.matcher(email).matches()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Enter a valid email address");
+        }
+        String phone = OtpService.normalizePhone(request.phone() == null ? "" : request.phone());
+        if (!phone.matches("^[6-9]\\d{9}$")) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST, "Enter a valid 10-digit Indian mobile number");
+        }
+        if (request.password() == null || request.password().trim().length() < 6) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Password must be at least 6 characters");
+        }
+        if (users.existsByEmailIgnoreCase(email)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Email already registered");
         }
         AppUser user = new AppUser();
         user.setId(Ids.next("u"));
-        user.setName(request.name());
-        user.setEmail(request.email().toLowerCase());
-        user.setPhone(request.phone());
-        user.setPasswordHash(encoder.encode(request.password()));
+        user.setName(request.name().trim());
+        user.setEmail(email);
+        user.setPhone(phone);
+        // Phone verification is deferred; phone_verified_at stays null until a future OTP hook.
+        user.setPhoneVerifiedAt(null);
+        user.setPasswordHash(encoder.encode(request.password().trim()));
         user.setRole(Role.BUYER);
         users.save(user);
         return toAuth(user);
@@ -76,7 +94,12 @@ public class AuthService {
             user.setEmail(email);
         }
         if (request.phone() != null && !request.phone().isBlank()) {
-            user.setPhone(OtpService.normalizePhone(request.phone()));
+            String phone = OtpService.normalizePhone(request.phone());
+            if (!phone.equals(user.getPhone())) {
+                user.setPhone(phone);
+                // Changing phone clears verification until a future OTP flow re-verifies.
+                user.setPhoneVerifiedAt(null);
+            }
         }
         if (request.dob() != null) {
             user.setDob(request.dob());
