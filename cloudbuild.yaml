@@ -6,6 +6,10 @@ timeout: 1800s
 steps:
   - name: gcr.io/cloud-builders/docker
     args: ["build", "-t", "${_IMAGE}", "."]
+  # Push before deploy. Cloud Run resolves :latest from Artifact Registry;
+  # Cloud Build's implicit `images:` push happens after all steps.
+  - name: gcr.io/cloud-builders/docker
+    args: ["push", "${_IMAGE}"]
   - name: gcr.io/google.com/cloudsdktool/cloud-sdk
     args:
       - gcloud
