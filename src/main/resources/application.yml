@@ -49,7 +49,8 @@ app:
   cors:
     # Comma-separated UI origins. Local defaults; Cloud Run must set the live UI origin.
     allowed-origins: ${DUKKAN_CORS_ORIGINS:http://localhost:3000,http://localhost:3001,http://localhost:3002}
-  frontend-base-url: ${DUKKAN_FRONTEND_BASE_URL:http://localhost:3000}
+  # Storefront origin for password-reset links. Prefer DUKKAN_PUBLIC_WEB_URL.
+  frontend-base-url: ${DUKKAN_PUBLIC_WEB_URL:${DUKKAN_FRONTEND_BASE_URL:http://localhost:3000}}
   # Absolute API origin for generated upload URLs. Empty = use the incoming request.
   public-base-url: ${DUKKAN_PUBLIC_BASE_URL:}
   jwt:

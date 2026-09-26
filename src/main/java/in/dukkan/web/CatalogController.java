@@ -116,7 +116,8 @@ public class CatalogController {
             Integer requestWaveSize,
             Integer requestMaxShops,
             Integer offerExpirySeconds,
-            Integer requestMaxWaves) {}
+            Integer requestMaxWaves,
+            Boolean quickDeliveryEnabled) {}
 
     @PatchMapping("/settings")
     @Transactional
@@ -146,6 +147,9 @@ public class CatalogController {
         }
         if (request.requestMaxWaves() != null && request.requestMaxWaves() > 0) {
             config.setRequestMaxWaves(request.requestMaxWaves());
+        }
+        if (request.quickDeliveryEnabled() != null) {
+            config.setQuickDeliveryEnabled(request.quickDeliveryEnabled());
         }
         return settings.save(config);
     }

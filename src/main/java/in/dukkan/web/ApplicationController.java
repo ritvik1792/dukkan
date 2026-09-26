@@ -1,23 +1,25 @@
 package in.dukkan.web;
 
-import in.dukkan.common.Ids;
 import in.dukkan.domain.AppUser;
 import in.dukkan.domain.ApplicationStatus;
+import in.dukkan.domain.ProviderType;
 import in.dukkan.domain.Role;
 import in.dukkan.domain.SellerApplication;
 import in.dukkan.domain.Shop;
 import in.dukkan.domain.ShopStatus;
 import in.dukkan.repository.ApplicationRepository;
-import in.dukkan.repository.NeighborhoodRepository;
 import in.dukkan.repository.ShopRepository;
 import in.dukkan.repository.UserRepository;
+import in.dukkan.service.SellerOnboardingService;
+import in.dukkan.service.SellerOnboardingService.SellerIntent;
 import in.dukkan.web.dto.ShopDtos.ShopView;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
-import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
+import java.util.Set;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.transaction.annotation.Transactional;
@@ -42,36 +44,57 @@ public class ApplicationController {
             @NotBlank String address,
             String gstin,
             List<String> categoryIds,
+            List<String> serviceCategoryIds,
+            Boolean provideServices,
+            ProviderType providerType,
+            String profession,
+            String serviceArea,
             String notes,
             Boolean partnerDeliveryEnabled,
             Boolean shopDeliveryEnabled,
             Double lat,
             Double lng) {}
 
-    public record ApplicationPatch(ApplicationStatus status) {}
+    public record ApplicationPatch(
+            ApplicationStatus status,
+            String reviewNote,
+            String businessName,
+            String ownerName,
+            String email,
+            String phone,
+            String address,
+            String gstin,
+            List<String> categoryIds,
+            String notes,
+            String profession,
+            String serviceArea,
+            Boolean partnerDeliveryEnabled,
+            Boolean shopDeliveryEnabled,
+            Double lat,
+            Double lng) {}
 
     public record ApplicationCreated(SellerApplication application, ShopView shop) {}
 
     private final ApplicationRepository applications;
     private final ShopRepository shops;
     private final UserRepository users;
-    private final NeighborhoodRepository neighborhoods;
     private final ShopViews shopViews;
     private final Access access;
+    private final SellerOnboardingService onboarding;
 
     public ApplicationController(
             ApplicationRepository applications,
             ShopRepository shops,
             UserRepository users,
-            NeighborhoodRepository neighborhoods,
             ShopViews shopViews,
-            Access access) {
+            Access access,
+            SellerOnboardingService onboarding) {
         this.applications = applications;
         this.shops = shops;
         this.users = users;
-        this.neighborhoods = neighborhoods;
         this.shopViews = shopViews;
         this.access = access;
+        this.onboarding = onboarding;
     }
 
     @GetMapping
@@ -87,76 +110,31 @@ public class ApplicationController {
     @Transactional
     public ApplicationCreated create(Authentication auth, @Valid @RequestBody CreateApplicationRequest request) {
         AppUser user = access.requireUser(auth);
-        var neighborhood = neighborhoods.findAll().stream().findFirst();
-        double lat = request.lat() != null
-                ? request.lat()
-                : neighborhood.map(item -> item.getLat()).orElse(28.6328);
-        double lng = request.lng() != null
-                ? request.lng()
-                : neighborhood.map(item -> item.getLng()).orElse(77.2197);
-
-        Shop shop = new Shop();
-        shop.setId(Ids.next("shop"));
-        shop.setName(request.businessName().trim());
-        shop.setOwnerUserId(user.getId());
-        shop.setDescription(request.notes() == null || request.notes().isBlank()
-                ? request.businessName().trim() + " on pinkCarrot"
-                : request.notes().trim());
-        shop.setAddress(request.address().trim());
-        shop.setLat(lat);
-        shop.setLng(lng);
-        shop.setRating(BigDecimal.ZERO);
-        shop.setReviewCount(0);
-        shop.setVerified(request.gstin() != null && !request.gstin().isBlank());
-        shop.setGstin(blankToNull(request.gstin()));
-        shop.setYearStarted(java.time.Year.now().getValue());
-        shop.setStatus(ShopStatus.PENDING);
-        shop.setPartnerDeliveryEnabled(request.partnerDeliveryEnabled() == null || request.partnerDeliveryEnabled());
-        shop.setShopDeliveryEnabled(request.shopDeliveryEnabled() == null || request.shopDeliveryEnabled());
-        shop.setPartnerDeliveryFee(new BigDecimal("25"));
-        shop.setShopDeliveryFee(new BigDecimal("15"));
-        shop.setMinOrderAmount(new BigDecimal("99"));
-        shop.setOpen(true);
-        shop.setOpenTime("09:00");
-        shop.setCloseTime("21:00");
-        shop.setProviderType(in.dukkan.domain.ProviderType.PRODUCT_BUSINESS);
-        shop.setProductsAllowed(true);
-        shop.setServicesAllowed(false);
-        shop.setBookingsAllowed(false);
-        shop.setServiceRequestsAllowed(false);
-        shop.setOrdersAllowed(true);
-        shop.setQuickDeliveryAllowed(false);
-        shop.setVerificationStatus(in.dukkan.domain.VerificationStatus.UNVERIFIED);
-        if (request.categoryIds() != null) {
-            shop.setCategoryIds(new HashSet<>(request.categoryIds()));
+        boolean provideServices = Boolean.TRUE.equals(request.provideServices())
+                || (request.serviceCategoryIds() != null && !request.serviceCategoryIds().isEmpty());
+        SellerIntent intent = new SellerIntent(
+                request.businessName(),
+                request.ownerName(),
+                request.email(),
+                request.phone(),
+                request.address(),
+                request.gstin(),
+                request.notes(),
+                request.categoryIds(),
+                request.serviceCategoryIds(),
+                provideServices,
+                request.providerType(),
+                request.profession(),
+                request.serviceArea(),
+                request.partnerDeliveryEnabled(),
+                request.shopDeliveryEnabled(),
+                request.lat(),
+                request.lng());
+        if (!SellerOnboardingService.wantsSellerAccount(intent)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Select shop categories or services");
         }
-        shops.save(shop);
-
-        SellerApplication application = new SellerApplication();
-        application.setId(Ids.next("app"));
-        application.setUserId(user.getId());
-        application.setShopId(shop.getId());
-        application.setStatus(ApplicationStatus.SUBMITTED);
-        application.setBusinessName(request.businessName().trim());
-        application.setOwnerName(request.ownerName().trim());
-        application.setEmail(request.email().trim());
-        application.setPhone(request.phone().trim());
-        application.setAddress(request.address().trim());
-        application.setGstin(blankToNull(request.gstin()));
-        application.setNotes(request.notes());
-        application.setSubmittedAt(Instant.now());
-        if (request.categoryIds() != null) {
-            application.setCategoryIds(new HashSet<>(request.categoryIds()));
-        }
-        applications.save(application);
-
-        user.setName(request.ownerName().trim());
-        user.setEmail(request.email().trim());
-        user.setPhone(request.phone().trim());
-        user.setRole(Role.SELLER);
-        user.setShopId(shop.getId());
-        users.save(user);
-        return new ApplicationCreated(application, shopViews.toView(shop));
+        var result = onboarding.upsertProfile(user, intent);
+        return new ApplicationCreated(result.application(), shopViews.toView(result.shop()));
     }
 
     @PatchMapping("/{id}")
@@ -164,34 +142,186 @@ public class ApplicationController {
     public SellerApplication patch(
             Authentication auth, @PathVariable String id, @RequestBody ApplicationPatch request) {
         AppUser user = access.requireUser(auth);
-        if (user.getRole() != Role.ADMIN) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN);
-        }
         SellerApplication application = applications.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
-        if (request.status() == null) {
+        boolean admin = user.getRole() == Role.ADMIN;
+        boolean owner = user.getId().equals(application.getUserId());
+        if (!admin && !owner) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN);
+        }
+        if (request == null) {
             return application;
         }
-        application.setStatus(request.status());
-        shops.findById(application.getShopId()).ifPresent(shop -> {
-            if (request.status() == ApplicationStatus.APPROVED) {
-                shop.setStatus(ShopStatus.ACTIVE);
-            } else if (request.status() == ApplicationStatus.REJECTED) {
-                shop.setStatus(ShopStatus.PENDING);
+
+        if (hasEdits(request)) {
+            if (application.getStatus() == ApplicationStatus.APPROVED && !admin) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "This dukkan is already live");
             }
-            shops.save(shop);
-        });
-        users.findById(application.getUserId()).ifPresent(owner -> {
-            if (request.status() == ApplicationStatus.APPROVED) {
-                owner.setRole(Role.SELLER);
-                owner.setShopId(application.getShopId());
-                users.save(owner);
+            applyEdits(application, request);
+            shops.findById(application.getShopId()).ifPresent(shop -> syncShop(shop, request));
+            if (!admin && application.getStatus() != ApplicationStatus.SUBMITTED) {
+                application.setStatus(ApplicationStatus.SUBMITTED);
+                application.setSubmittedAt(Instant.now());
             }
-        });
+        }
+
+        if (request.status() != null || request.reviewNote() != null) {
+            if (!admin) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN);
+            }
+            if (request.reviewNote() != null) {
+                String note = request.reviewNote().trim();
+                application.setReviewNote(note.isEmpty() ? null : note);
+            }
+            if (request.status() != null) {
+                application.setStatus(request.status());
+                shops.findById(application.getShopId()).ifPresent(shop -> {
+                    if (request.status() == ApplicationStatus.APPROVED) {
+                        shop.setStatus(ShopStatus.ACTIVE);
+                    } else if (request.status() == ApplicationStatus.REJECTED) {
+                        shop.setStatus(ShopStatus.PENDING);
+                    }
+                    shops.save(shop);
+                });
+                users.findById(application.getUserId()).ifPresent(ownerUser -> {
+                    if (request.status() == ApplicationStatus.APPROVED) {
+                        if (ownerUser.getRole() != Role.ADMIN) {
+                            ownerUser.setRole(Role.SELLER);
+                        }
+                        ownerUser.setShopId(application.getShopId());
+                        users.save(ownerUser);
+                    }
+                });
+            }
+        }
         return applications.save(application);
     }
 
-    private static String blankToNull(String value) {
-        return value == null || value.isBlank() ? null : value;
+    private static boolean hasEdits(ApplicationPatch request) {
+        return request.businessName() != null
+                || request.ownerName() != null
+                || request.email() != null
+                || request.phone() != null
+                || request.address() != null
+                || request.gstin() != null
+                || request.categoryIds() != null
+                || request.notes() != null
+                || request.profession() != null
+                || request.serviceArea() != null
+                || request.partnerDeliveryEnabled() != null
+                || request.shopDeliveryEnabled() != null
+                || request.lat() != null
+                || request.lng() != null;
+    }
+
+    private void applyEdits(SellerApplication application, ApplicationPatch request) {
+        if (request.businessName() != null && !request.businessName().isBlank()) {
+            application.setBusinessName(request.businessName().trim());
+        }
+        if (request.ownerName() != null && !request.ownerName().isBlank()) {
+            application.setOwnerName(request.ownerName().trim());
+        }
+        if (request.email() != null && !request.email().isBlank()) {
+            application.setEmail(request.email().trim());
+        }
+        if (request.phone() != null && !request.phone().isBlank()) {
+            application.setPhone(request.phone().trim());
+        }
+        if (request.address() != null && !request.address().isBlank()) {
+            application.setAddress(request.address().trim());
+        }
+        if (request.gstin() != null) {
+            String gstin = request.gstin().trim();
+            application.setGstin(gstin.isEmpty() ? null : gstin);
+        }
+        if (request.notes() != null) {
+            application.setNotes(request.notes().trim());
+        }
+        if (request.categoryIds() != null) {
+            Set<String> ids = new HashSet<>();
+            for (String categoryId : request.categoryIds()) {
+                if (categoryId != null && !categoryId.isBlank()) {
+                    ids.add(categoryId.trim());
+                }
+            }
+            application.getCategoryIds().clear();
+            application.getCategoryIds().addAll(ids);
+        }
+        users.findById(application.getUserId()).ifPresent(owner -> {
+            if (request.ownerName() != null && !request.ownerName().isBlank()) {
+                owner.setName(request.ownerName().trim());
+            }
+            if (request.email() != null && !request.email().isBlank()) {
+                String email = request.email().trim().toLowerCase(Locale.ROOT);
+                if (users.findByEmailIgnoreCase(email)
+                        .filter(other -> !other.getId().equals(owner.getId()))
+                        .isPresent()) {
+                    throw new ResponseStatusException(
+                            HttpStatus.CONFLICT,
+                            "That email belongs to another account and was left unchanged.");
+                }
+                owner.setEmail(email);
+            }
+            if (request.phone() != null && !request.phone().isBlank()) {
+                String phone = request.phone().trim();
+                if (users.findFirstByPhone(phone)
+                        .filter(other -> !other.getId().equals(owner.getId()))
+                        .isPresent()) {
+                    throw new ResponseStatusException(
+                            HttpStatus.CONFLICT,
+                            "That mobile number belongs to another account and was left unchanged.");
+                }
+                owner.setPhone(phone);
+            }
+            users.save(owner);
+        });
+    }
+
+    private void syncShop(Shop shop, ApplicationPatch request) {
+        if (request.businessName() != null && !request.businessName().isBlank()) {
+            shop.setName(request.businessName().trim());
+        }
+        if (request.address() != null && !request.address().isBlank()) {
+            shop.setAddress(request.address().trim());
+        }
+        if (request.notes() != null) {
+            shop.setDescription(request.notes().trim());
+        }
+        if (request.gstin() != null) {
+            String gstin = request.gstin().trim();
+            shop.setGstin(gstin.isEmpty() ? null : gstin);
+            shop.setVerified(!gstin.isEmpty());
+        }
+        if (request.lat() != null) {
+            shop.setLat(request.lat());
+        }
+        if (request.lng() != null) {
+            shop.setLng(request.lng());
+        }
+        if (request.partnerDeliveryEnabled() != null) {
+            shop.setPartnerDeliveryEnabled(request.partnerDeliveryEnabled());
+        }
+        if (request.shopDeliveryEnabled() != null) {
+            shop.setShopDeliveryEnabled(request.shopDeliveryEnabled());
+        }
+        if (request.profession() != null) {
+            String profession = request.profession().trim();
+            shop.setProfession(profession.isEmpty() ? null : profession);
+        }
+        if (request.serviceArea() != null) {
+            String area = request.serviceArea().trim();
+            shop.setServiceArea(area.isEmpty() ? null : area);
+        }
+        if (request.categoryIds() != null) {
+            Set<String> ids = new HashSet<>();
+            for (String categoryId : request.categoryIds()) {
+                if (categoryId != null && !categoryId.isBlank()) {
+                    ids.add(categoryId.trim());
+                }
+            }
+            shop.getCategoryIds().clear();
+            shop.getCategoryIds().addAll(ids);
+        }
+        shops.save(shop);
     }
 }

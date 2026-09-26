@@ -17,9 +17,14 @@ import static org.mockito.Mockito.when;
 import in.dukkan.domain.AppUser;
 import in.dukkan.domain.PasswordResetToken;
 import in.dukkan.domain.Role;
+import in.dukkan.repository.ApplicationRepository;
+import in.dukkan.repository.NeighborhoodRepository;
 import in.dukkan.repository.PasswordResetTokenRepository;
+import in.dukkan.repository.ShopRepository;
+import in.dukkan.repository.TicketRepository;
 import in.dukkan.repository.UserRepository;
 import in.dukkan.security.JwtService;
+import in.dukkan.web.dto.AuthDtos.LoginRequest;
 import in.dukkan.web.dto.AuthDtos.SignupRequest;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
@@ -51,6 +56,10 @@ class AuthPasswordFlowTest {
     @Mock PasswordResetTokenRepository tokens;
     @Mock JwtService jwt;
     @Mock MailDeliveryService mail;
+    @Mock ShopRepository shops;
+    @Mock ApplicationRepository applications;
+    @Mock NeighborhoodRepository neighborhoods;
+    @Mock TicketRepository tickets;
 
     PasswordEncoder encoder = new BCryptPasswordEncoder();
     AuthService auth;
@@ -58,13 +67,21 @@ class AuthPasswordFlowTest {
 
     @BeforeEach
     void setUp() {
-        auth = new AuthService(users, encoder, jwt);
+        SellerOnboardingService onboarding =
+                new SellerOnboardingService(shops, applications, neighborhoods, users, tickets);
+        auth = new AuthService(users, encoder, jwt, onboarding);
         passwordReset = new PasswordResetService(
                 users, tokens, encoder, mail, RESET_SECRET, 45, "http://localhost:3000");
         when(jwt.createToken(anyString(), anyString())).thenReturn("jwt-token");
         when(users.save(any(AppUser.class))).thenAnswer(inv -> inv.getArgument(0));
         when(tokens.save(any(PasswordResetToken.class))).thenAnswer(inv -> inv.getArgument(0));
         when(mail.sendText(anyString(), anyString(), anyString())).thenReturn(false);
+        when(shops.findByOwnerUserId(anyString())).thenReturn(java.util.List.of());
+        when(shops.findById(anyString())).thenReturn(Optional.empty());
+        when(shops.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(applications.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(applications.findByUserIdOrderBySubmittedAtDesc(anyString())).thenReturn(java.util.List.of());
+        when(neighborhoods.findAll()).thenReturn(java.util.List.of());
     }
 
     @Test
@@ -81,9 +98,41 @@ class AuthPasswordFlowTest {
         ArgumentCaptor<AppUser> captor = ArgumentCaptor.forClass(AppUser.class);
         verify(users).save(captor.capture());
         AppUser saved = captor.getValue();
+        assertEquals(Role.BUYER, saved.getRole());
         assertNull(saved.getPhoneVerifiedAt());
         assertTrue(encoder.matches("secret12", saved.getPasswordHash()));
         assertNotEquals("secret12", saved.getPasswordHash());
+    }
+
+    @Test
+    void loginAcceptsTrimmedPasswordMatchingSignupHash() {
+        AppUser user = new AppUser();
+        user.setId("u-login");
+        user.setEmail("buyer@example.com");
+        user.setName("Buyer");
+        user.setRole(Role.BUYER);
+        // Signup stores encode(password.trim()) — login must trim the same way.
+        user.setPasswordHash(encoder.encode("secret12"));
+        when(users.findByEmailIgnoreCase("buyer@example.com")).thenReturn(Optional.of(user));
+
+        var response = auth.login(new LoginRequest("  Buyer@Example.com  ", "  secret12  "));
+        assertEquals("jwt-token", response.token());
+        assertEquals("buyer@example.com", response.user().email());
+    }
+
+    @Test
+    void loginRejectsWrongPassword() {
+        AppUser user = new AppUser();
+        user.setId("u-login-bad");
+        user.setEmail("buyer@example.com");
+        user.setName("Buyer");
+        user.setRole(Role.BUYER);
+        user.setPasswordHash(encoder.encode("secret12"));
+        when(users.findByEmailIgnoreCase("buyer@example.com")).thenReturn(Optional.of(user));
+
+        assertThrows(
+                ResponseStatusException.class,
+                () -> auth.login(new LoginRequest("buyer@example.com", "wrongpass")));
     }
 
     @Test
@@ -92,6 +141,38 @@ class AuthPasswordFlowTest {
                 ResponseStatusException.class,
                 () -> auth.signup(new SignupRequest("Buyer", "buyer@example.com", "123", "secret12")));
         verify(users, never()).save(any());
+    }
+
+    @Test
+    void signupWithCategoriesAndServicesCreatesSellerAndOneShop() {
+        when(users.existsByEmailIgnoreCase("seller@example.com")).thenReturn(false);
+
+        var response = auth.signup(
+                new SignupRequest(
+                        "Seller",
+                        "seller@example.com",
+                        "9876543210",
+                        "secret12",
+                        java.util.List.of("grocery", "snacks"),
+                        java.util.List.of("salon"),
+                        true,
+                        "Metro Mart",
+                        "Connaught Place",
+                        28.63,
+                        77.21,
+                        null,
+                        "Shop plus salon",
+                        null,
+                        null,
+                        "South Delhi",
+                        true,
+                        true));
+
+        assertEquals("jwt-token", response.token());
+        assertEquals(Role.SELLER, response.user().role());
+        assertNotNull(response.user().shopId());
+        verify(shops).save(any());
+        verify(applications).save(any());
     }
 
     @Test

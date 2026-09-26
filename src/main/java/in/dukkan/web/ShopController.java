@@ -15,6 +15,7 @@ import in.dukkan.web.dto.ShopDtos.EmployeeWrite;
 import in.dukkan.web.dto.ShopDtos.ShopPatch;
 import in.dukkan.web.dto.ShopDtos.ShopView;
 import in.dukkan.web.dto.ShopDtos.TransportWrite;
+import java.util.HashSet;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.transaction.annotation.Transactional;
@@ -108,6 +109,17 @@ public class ShopController {
         }
         if (request.imageUrl() != null) {
             shop.setImageUrl(request.imageUrl().isBlank() ? null : request.imageUrl().trim());
+        }
+        if (request.categoryIds() != null) {
+            if (shop.getCategoryIds() == null) {
+                shop.setCategoryIds(new HashSet<>());
+            }
+            shop.getCategoryIds().clear();
+            for (String categoryId : request.categoryIds()) {
+                if (categoryId != null && !categoryId.isBlank()) {
+                    shop.getCategoryIds().add(categoryId.trim());
+                }
+            }
         }
         if (request.serviceArea() != null) {
             shop.setServiceArea(request.serviceArea().isBlank() ? null : request.serviceArea().trim());

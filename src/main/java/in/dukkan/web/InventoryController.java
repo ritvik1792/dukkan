@@ -15,6 +15,8 @@ import in.dukkan.repository.ShopRepository;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
@@ -143,11 +145,36 @@ public class InventoryController {
                 ? product.getName().substring(0, Math.min(8, product.getName().length()))
                 : request.imageLabel());
         product.setImageHue(request.imageHue() == null ? 32 : request.imageHue());
-        product.setImageUrl(blankToNull(request.imageUrl()));
-        product.getGalleryUrls().clear();
-        if (request.galleryUrls() != null) {
-            product.getGalleryUrls().addAll(request.galleryUrls());
+        String imageUrl = blankToNull(request.imageUrl());
+        product.setImageUrl(imageUrl);
+        List<String> next = distinctGallery(imageUrl, request.galleryUrls());
+        List<String> gallery = product.getGalleryUrls();
+        gallery.clear();
+        // Flush the delete before insert. clear()+addAll on an @OrderColumn
+        // element collection otherwise keeps the old rows and the picture shows twice.
+        if (product.getId() != null && catalog.existsById(product.getId()) && !next.isEmpty()) {
+            catalog.saveAndFlush(product);
         }
+        gallery.addAll(next);
+    }
+
+    private static List<String> distinctGallery(String imageUrl, List<String> incoming) {
+        LinkedHashSet<String> urls = new LinkedHashSet<>();
+        if (incoming == null) {
+            return List.of();
+        }
+        String main = imageUrl == null ? "" : imageUrl.trim();
+        for (String raw : incoming) {
+            if (raw == null || raw.isBlank()) {
+                continue;
+            }
+            String url = raw.trim();
+            if (!main.isEmpty() && url.equals(main)) {
+                continue;
+            }
+            urls.add(url);
+        }
+        return new ArrayList<>(urls);
     }
 
     private void apply(Listing listing, ListingWriteRequest request) {

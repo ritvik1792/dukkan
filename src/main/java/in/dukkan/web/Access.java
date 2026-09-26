@@ -36,10 +36,12 @@ public class Access {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED));
     }
 
+    /** Admin reaches seller tools and the storefront. Seller does not reach admin. */
     public boolean isAdmin(AppUser user) {
         return user.getRole() == Role.ADMIN;
     }
 
+    /** Seller console, plus admin. Buyers stay on the storefront. */
     public boolean isSeller(AppUser user) {
         return user.getRole() == Role.SELLER || user.getRole() == Role.ADMIN;
     }

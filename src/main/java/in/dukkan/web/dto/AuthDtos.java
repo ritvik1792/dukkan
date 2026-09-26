@@ -1,11 +1,13 @@
 package in.dukkan.web.dto;
 
+import in.dukkan.domain.ProviderType;
 import in.dukkan.domain.Role;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.List;
 
 public class AuthDtos {
 
@@ -15,7 +17,43 @@ public class AuthDtos {
             @NotBlank String name,
             @Email @NotBlank String email,
             @NotBlank String phone,
-            @NotBlank @Size(min = 6) String password) {}
+            @NotBlank @Size(min = 6) String password,
+            List<String> categoryIds,
+            List<String> serviceCategoryIds,
+            Boolean provideServices,
+            String businessName,
+            String address,
+            Double lat,
+            Double lng,
+            String gstin,
+            String notes,
+            ProviderType providerType,
+            String profession,
+            String serviceArea,
+            Boolean partnerDeliveryEnabled,
+            Boolean shopDeliveryEnabled) {
+        public SignupRequest(String name, String email, String phone, String password) {
+            this(
+                    name,
+                    email,
+                    phone,
+                    password,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null);
+        }
+    }
 
     public record OtpRequest(String phone, String email, String purpose) {}
 

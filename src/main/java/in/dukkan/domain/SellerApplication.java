@@ -50,6 +50,9 @@ public class SellerApplication extends AuditableEntity {
 
     private String notes;
 
+    @Column(name = "review_note")
+    private String reviewNote;
+
     @Column(name = "submitted_at", nullable = false)
     private Instant submittedAt;
 
@@ -144,6 +147,14 @@ public class SellerApplication extends AuditableEntity {
 
     public void setNotes(String notes) {
         this.notes = notes;
+    }
+
+    public String getReviewNote() {
+        return reviewNote;
+    }
+
+    public void setReviewNote(String reviewNote) {
+        this.reviewNote = reviewNote;
     }
 
     public Instant getSubmittedAt() {

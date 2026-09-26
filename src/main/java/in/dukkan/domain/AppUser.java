@@ -22,9 +22,11 @@ public class AppUser extends AuditableEntity {
     @Column(nullable = false, unique = true)
     private String email;
 
-    @Column(name = "password_hash", nullable = false)
+    /** BCrypt hashes are 60 chars; DB column is VARCHAR(100). Shorter columns truncate and break login. */
+    @Column(name = "password_hash", nullable = false, length = 100)
     private String passwordHash;
 
+    /** One account, one role. Many buyers, sellers, and admins can exist side by side. */
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private Role role;

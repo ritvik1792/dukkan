@@ -36,6 +36,9 @@ public class PlatformSettings extends AuditableEntity {
     @Column(name = "request_max_waves", nullable = false)
     private int requestMaxWaves = 3;
 
+    @Column(name = "quick_delivery_enabled", nullable = false)
+    private boolean quickDeliveryEnabled;
+
     public String getId() {
         return id;
     }
@@ -106,5 +109,13 @@ public class PlatformSettings extends AuditableEntity {
 
     public void setRequestMaxWaves(int requestMaxWaves) {
         this.requestMaxWaves = requestMaxWaves;
+    }
+
+    public boolean isQuickDeliveryEnabled() {
+        return quickDeliveryEnabled;
+    }
+
+    public void setQuickDeliveryEnabled(boolean quickDeliveryEnabled) {
+        this.quickDeliveryEnabled = quickDeliveryEnabled;
     }
 }

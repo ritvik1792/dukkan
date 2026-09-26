@@ -11,7 +11,7 @@ import in.dukkan.repository.ProviderServiceRepository;
 import in.dukkan.repository.ShopRepository;
 import java.math.BigDecimal;
 import java.time.Instant;
-import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -142,7 +142,24 @@ public class ServiceCatalogService {
             service.setImageUrl(blankToNull(input.imageUrl()));
         }
         if (input.imageUrls() != null) {
-            service.setImageUrls(new ArrayList<>(input.imageUrls()));
+            String main = service.getImageUrl() == null ? "" : service.getImageUrl().trim();
+            LinkedHashSet<String> urls = new LinkedHashSet<>();
+            for (String raw : input.imageUrls()) {
+                if (raw == null || raw.isBlank()) {
+                    continue;
+                }
+                String url = raw.trim();
+                if (!main.isEmpty() && url.equals(main)) {
+                    continue;
+                }
+                urls.add(url);
+            }
+            List<String> images = service.getImageUrls();
+            images.clear();
+            if (!creating && service.getId() != null && !urls.isEmpty()) {
+                services.saveAndFlush(service);
+            }
+            images.addAll(urls);
         }
         if (input.status() != null) {
             service.setStatus(input.status());

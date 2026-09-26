@@ -140,11 +140,13 @@ public class OrderController {
         order.setStatus(OrderStatus.PLACED);
         order.setAddress(request.address());
         order.setCreatedAt(now);
-        order.setPaymentMethod(request.paymentMethod());
-        order.setPaymentStatus(request.paymentStatus() != null
-                ? request.paymentStatus()
-                : ("cod".equalsIgnoreCase(request.paymentMethod()) ? "cod" : "paid"));
-        order.setPaymentRefId(request.paymentRefId());
+        if (request.paymentMethod() != null && !request.paymentMethod().isBlank()) {
+            order.setPaymentMethod(request.paymentMethod());
+            order.setPaymentStatus(request.paymentStatus() != null
+                    ? request.paymentStatus()
+                    : ("cod".equalsIgnoreCase(request.paymentMethod()) ? "cod" : "paid"));
+            order.setPaymentRefId(request.paymentRefId());
+        }
         order.setDiscount(request.discount() == null ? BigDecimal.ZERO : request.discount());
         order.setCouponCode(request.couponCode());
         if (linkedOffer != null) {

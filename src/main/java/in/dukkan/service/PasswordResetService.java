@@ -116,10 +116,14 @@ public class PasswordResetService {
 
         boolean sent = mail.sendText(user.getEmail(), "Reset your pinkCarrot password", body);
         if (!sent) {
-            log.info(
-                    "Password reset link for user {} (dev — check MAIL log above): {}",
-                    user.getId(),
-                    link);
+            if (!mail.isMailConfigured()) {
+                log.info("mail not configured, link logged for user {}: {}", user.getId(), link);
+            } else {
+                log.warn(
+                        "Password reset mail failed for user {}; link logged: {}",
+                        user.getId(),
+                        link);
+            }
         }
     }
 

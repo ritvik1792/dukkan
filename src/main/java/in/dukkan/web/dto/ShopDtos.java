@@ -129,7 +129,8 @@ public final class ShopDtos {
             String address,
             Double lat,
             Double lng,
-            String imageUrl) {}
+            String imageUrl,
+            List<String> categoryIds) {}
 
     public record EmployeeWrite(
             String shopId, String name, String role, String phone, Boolean available) {}

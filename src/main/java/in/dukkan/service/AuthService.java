@@ -5,6 +5,7 @@ import in.dukkan.domain.AppUser;
 import in.dukkan.domain.Role;
 import in.dukkan.repository.UserRepository;
 import in.dukkan.security.JwtService;
+import in.dukkan.service.SellerOnboardingService.SellerIntent;
 import in.dukkan.web.dto.AuthDtos.AuthResponse;
 import in.dukkan.web.dto.AuthDtos.LoginRequest;
 import in.dukkan.web.dto.AuthDtos.SignupRequest;
@@ -27,17 +28,23 @@ public class AuthService {
     private final UserRepository users;
     private final PasswordEncoder encoder;
     private final JwtService jwt;
+    private final SellerOnboardingService onboarding;
 
-    public AuthService(UserRepository users, PasswordEncoder encoder, JwtService jwt) {
+    public AuthService(
+            UserRepository users, PasswordEncoder encoder, JwtService jwt, SellerOnboardingService onboarding) {
         this.users = users;
         this.encoder = encoder;
         this.jwt = jwt;
+        this.onboarding = onboarding;
     }
 
     public AuthResponse login(LoginRequest request) {
-        AppUser user = users.findByEmailIgnoreCase(request.email())
+        // Match signup/password-reset normalization so padded email/password still authenticate.
+        String email = request.email() == null ? "" : request.email().trim().toLowerCase(Locale.ROOT);
+        String password = request.password() == null ? "" : request.password().trim();
+        AppUser user = users.findByEmailIgnoreCase(email)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid credentials"));
-        if (!encoder.matches(request.password(), user.getPasswordHash())) {
+        if (password.isEmpty() || !encoder.matches(password, user.getPasswordHash())) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid credentials");
         }
         return toAuth(user);
@@ -58,8 +65,17 @@ public class AuthService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Password must be at least 6 characters");
         }
         if (users.existsByEmailIgnoreCase(email)) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Email already registered");
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "This email already has an account. Sign in to it. Signup does not replace or delete it.");
         }
+        if (users.findFirstByPhone(phone).isPresent()) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "This mobile number already has an account. Sign in to it. Signup does not replace or delete it.");
+        }
+        SellerIntent intent = intentFromSignup(request);
+        boolean selling = SellerOnboardingService.wantsSellerAccount(intent);
         AppUser user = new AppUser();
         user.setId(Ids.next("u"));
         user.setName(request.name().trim());
@@ -68,9 +84,33 @@ public class AuthService {
         // Phone verification is deferred; phone_verified_at stays null until a future OTP hook.
         user.setPhoneVerifiedAt(null);
         user.setPasswordHash(encoder.encode(request.password().trim()));
-        user.setRole(Role.BUYER);
+        user.setRole(selling ? Role.SELLER : Role.BUYER);
         users.save(user);
+        if (selling) {
+            onboarding.upsertProfile(user, intent);
+        }
         return toAuth(user);
+    }
+
+    private static SellerIntent intentFromSignup(SignupRequest request) {
+        return new SellerIntent(
+                request.businessName(),
+                request.name(),
+                request.email(),
+                request.phone(),
+                request.address(),
+                request.gstin(),
+                request.notes(),
+                request.categoryIds(),
+                request.serviceCategoryIds(),
+                Boolean.TRUE.equals(request.provideServices()),
+                request.providerType(),
+                request.profession(),
+                request.serviceArea(),
+                request.partnerDeliveryEnabled(),
+                request.shopDeliveryEnabled(),
+                request.lat(),
+                request.lng());
     }
 
     public UserResponse me(String userId) {
@@ -89,13 +129,21 @@ public class AuthService {
         if (request.email() != null && !request.email().isBlank()) {
             String email = request.email().trim().toLowerCase(Locale.ROOT);
             if (!email.equalsIgnoreCase(user.getEmail()) && users.existsByEmailIgnoreCase(email)) {
-                throw new ResponseStatusException(HttpStatus.CONFLICT, "Email already registered");
+                throw new ResponseStatusException(
+                        HttpStatus.CONFLICT, "That email belongs to another account and was left unchanged.");
             }
             user.setEmail(email);
         }
         if (request.phone() != null && !request.phone().isBlank()) {
             String phone = OtpService.normalizePhone(request.phone());
             if (!phone.equals(user.getPhone())) {
+                users.findFirstByPhone(phone)
+                        .filter(other -> !other.getId().equals(user.getId()))
+                        .ifPresent(other -> {
+                            throw new ResponseStatusException(
+                                    HttpStatus.CONFLICT,
+                                    "That mobile number belongs to another account and was left unchanged.");
+                        });
                 user.setPhone(phone);
                 // Changing phone clears verification until a future OTP flow re-verifies.
                 user.setPhoneVerifiedAt(null);

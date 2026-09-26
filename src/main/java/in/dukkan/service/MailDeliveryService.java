@@ -50,8 +50,9 @@ public class MailDeliveryService {
 
         if (!isMailConfigured()) {
             log.warn(
-                    "SMTP not configured (set spring.mail.host / DUKKAN_MAIL_*). "
-                            + "Password reset link was logged above for local development.");
+                    "mail not configured, link logged "
+                            + "(set DUKKAN_MAIL_HOST / DUKKAN_MAIL_USERNAME / DUKKAN_MAIL_PASSWORD "
+                            + "for free Gmail SMTP — see .env.example)");
             return false;
         }
 
