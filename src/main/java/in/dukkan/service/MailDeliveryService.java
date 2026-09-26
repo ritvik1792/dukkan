@@ -52,7 +52,7 @@ public class MailDeliveryService {
             log.warn(
                     "mail not configured, link logged "
                             + "(set DUKKAN_MAIL_HOST / DUKKAN_MAIL_USERNAME / DUKKAN_MAIL_PASSWORD "
-                            + "for free Gmail SMTP — see .env.example)");
+                            + "for free Gmail SMTP in .env)");
             return false;
         }
 

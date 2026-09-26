@@ -9,4 +9,3 @@ target/
 .env
 data/
 .DS_Store
-.env.example

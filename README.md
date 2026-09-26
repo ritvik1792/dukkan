@@ -29,13 +29,7 @@ That starts `postgres:16-alpine` on `localhost:5432` with:
 
 Health check: `pg_isready -U dukkan -d dukkan`.
 
-Copy env (never commit `.env`):
-
-```bash
-cp .env.example .env
-```
-
-Do **not** set `DUKKAN_SEED_*` passwords. That path is gone. Create accounts in the UI after the API is up. For local phone OTP without SMS, keep `DUKKAN_OTP_DEV_CODE=true` in `.env` (it is **false** in production).
+Use a local `.env` (never commit it). Create accounts in the UI after the API is up. For local phone OTP without SMS, keep `DUKKAN_OTP_DEV_CODE=true` in `.env` (it is **false** in production).
 
 ## Run the API (migrates only)
 
@@ -110,4 +104,4 @@ See **[DEPLOY.md](DEPLOY.md)** for the split:
 - **Database `dukkan`** — one database on that instance
 - **Cloud Run `dukkan-api`** and **Cloud Run `dukkan-ui`**
 
-Production must use `DUKKAN_OTP_DEV_CODE=false` and a long `DUKKAN_JWT_SECRET` from Secret Manager. `.env` is gitignored; only `.env.example` is committed.
+Production must use `DUKKAN_OTP_DEV_CODE=false` and a long `DUKKAN_JWT_SECRET` from Secret Manager. `.env` is gitignored and must never be pushed.

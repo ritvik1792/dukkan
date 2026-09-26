@@ -8,7 +8,6 @@
 # Secrets and local data
 .env
 .env.*
-!.env.example
 data/
 
 # Build output
