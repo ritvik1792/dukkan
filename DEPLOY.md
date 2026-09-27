@@ -1,4 +1,4 @@
-# Deploy Dukkan API to Google Cloud
+don# Deploy Dukkan API to Google Cloud
 
 This is the production layout. **Do not put user login passwords in Secret Manager or Cloud Run env.** Those passwords are chosen at signup and stored as BCrypt hashes in PostgreSQL (`app_users.password_hash`).
 
@@ -112,9 +112,11 @@ If you prefer the built-in `postgres` user, skip `users create` and store that p
 echo -n "$DB_PASSWORD" | gcloud secrets create dukkan-db-password --data-file=-
 echo -n "$DB_USER" | gcloud secrets create dukkan-db-user --data-file=-
 openssl rand -base64 48 | tr -d '\n' | gcloud secrets create dukkan-jwt-secret --data-file=-
+# Gmail app password, 16 characters, no spaces. Not a user login password.
+printf '%s' "$DUKKAN_MAIL_PASSWORD" | gcloud secrets create dukkan-mail-password --data-file=-
 ```
 
-Add more secrets later (maps, SMS, …) the same way. **Do not** create secrets for `DUKKAN_SEED_*` or anyone’s account password.
+Add more secrets later (maps, SMS, …) the same way. **Do not** create secrets for `DUKKAN_SEED_*` or anyone’s account password. The SMTP password belongs here; the Gmail address itself is a normal env var.
 
 ## 6. IAM for the Cloud Run runtime service account
 
@@ -122,7 +124,7 @@ Add more secrets later (maps, SMS, …) the same way. **Do not** create secrets 
 export PROJECT_NUMBER="$(gcloud projects describe "$PROJECT_ID" --format='value(projectNumber)')"
 export RUN_SA="${PROJECT_NUMBER}-compute@developer.gserviceaccount.com"
 
-for SECRET in dukkan-db-password dukkan-db-user dukkan-jwt-secret; do
+for SECRET in dukkan-db-password dukkan-db-user dukkan-jwt-secret dukkan-mail-password; do
   gcloud secrets add-iam-policy-binding "$SECRET" \
     --member="serviceAccount:${RUN_SA}" \
     --role="roles/secretmanager.secretAccessor"
@@ -157,8 +159,8 @@ gcloud run deploy dukkan-api \
   --cpu=1 \
   --memory=1Gi \
   --add-cloudsql-instances="$INSTANCE_CONN" \
-  --set-secrets="DUKKAN_DB_USER=dukkan-db-user:latest,DUKKAN_DB_PASSWORD=dukkan-db-password:latest,DUKKAN_JWT_SECRET=dukkan-jwt-secret:latest" \
-  --set-env-vars="SPRING_PROFILES_ACTIVE=prod,DUKKAN_DB_URL=jdbc:postgresql:///dukkan?cloudSqlInstance=${INSTANCE_CONN}&socketFactory=com.google.cloud.sql.postgres.SocketFactory,DUKKAN_SEED_ENABLED=false,DUKKAN_OTP_DEV_CODE=false,DUKKAN_UPLOAD_DIR=/tmp/dukkan-uploads,DUKKAN_CORS_ORIGINS=http://localhost:3000"
+  --set-secrets="DUKKAN_DB_USER=dukkan-db-user:latest,DUKKAN_DB_PASSWORD=dukkan-db-password:latest,DUKKAN_JWT_SECRET=dukkan-jwt-secret:latest,DUKKAN_MAIL_PASSWORD=dukkan-mail-password:latest" \
+  --set-env-vars="SPRING_PROFILES_ACTIVE=prod,DUKKAN_DB_URL=jdbc:postgresql:///dukkan?cloudSqlInstance=${INSTANCE_CONN}&socketFactory=com.google.cloud.sql.postgres.SocketFactory,DUKKAN_SEED_ENABLED=false,DUKKAN_OTP_DEV_CODE=false,DUKKAN_UPLOAD_DIR=/tmp/dukkan-uploads,DUKKAN_CORS_ORIGINS=http://localhost:3000,DUKKAN_MAIL_HOST=smtp.gmail.com,DUKKAN_MAIL_PORT=587,DUKKAN_MAIL_USERNAME=dukkan.admin@gmail.com,DUKKAN_MAIL_FROM=dukkan.admin@gmail.com,DUKKAN_MAIL_SMTP_AUTH=true,DUKKAN_MAIL_SMTP_STARTTLS=true"
 
 export API_URL="$(gcloud run services describe dukkan-api --region="$REGION" --format='value(status.url)')"
 echo "$API_URL"

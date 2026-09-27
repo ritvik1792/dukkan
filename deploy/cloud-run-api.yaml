@@ -53,6 +53,25 @@ spec:
                 secretKeyRef:
                   name: dukkan-jwt-secret
                   key: latest
+            - name: DUKKAN_MAIL_HOST
+              value: smtp.gmail.com
+            - name: DUKKAN_MAIL_PORT
+              value: "587"
+            - name: DUKKAN_MAIL_USERNAME
+              value: dukkan.admin@gmail.com
+            - name: DUKKAN_MAIL_FROM
+              value: dukkan.admin@gmail.com
+            - name: DUKKAN_MAIL_SMTP_AUTH
+              value: "true"
+            - name: DUKKAN_MAIL_SMTP_STARTTLS
+              value: "true"
+            - name: DUKKAN_PUBLIC_WEB_URL
+              value: https://dukkan-ui-zh6npfj54a-el.a.run.app
+            - name: DUKKAN_MAIL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: dukkan-mail-password
+                  key: latest
           startupProbe:
             httpGet:
               path: /api/health
