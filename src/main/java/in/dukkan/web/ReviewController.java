@@ -7,6 +7,9 @@ import in.dukkan.domain.Role;
 import in.dukkan.domain.Shop;
 import in.dukkan.repository.ReviewRepository;
 import in.dukkan.repository.ShopRepository;
+import in.dukkan.service.ReviewService;
+import in.dukkan.service.ReviewService.AspectGuide;
+import in.dukkan.service.ReviewService.CreateCommand;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -31,13 +34,16 @@ import org.springframework.web.server.ResponseStatusException;
 public class ReviewController {
 
     public record CreateReviewRequest(
-            @NotBlank String catalogProductId,
+            String catalogProductId,
             String listingId,
+            String serviceId,
             @NotBlank String shopId,
             String orderId,
-            @Min(1) @Max(5) int rating,
+            @Min(1) @Max(5) Integer productQuality,
+            @Min(1) @Max(5) Integer shopExperience,
+            @Min(1) @Max(5) Integer staffScore,
             String title,
-            @NotBlank String body,
+            String body,
             List<String> imageUrls) {}
 
     public record ReviewReplyRequest(@NotBlank String body) {}
@@ -46,12 +52,20 @@ public class ReviewController {
 
     private final ReviewRepository reviews;
     private final ShopRepository shops;
+    private final ReviewService reviewService;
     private final Access access;
 
-    public ReviewController(ReviewRepository reviews, ShopRepository shops, Access access) {
+    public ReviewController(
+            ReviewRepository reviews, ShopRepository shops, ReviewService reviewService, Access access) {
         this.reviews = reviews;
         this.shops = shops;
+        this.reviewService = reviewService;
         this.access = access;
+    }
+
+    @GetMapping("/aspects")
+    public AspectGuide aspects(@RequestParam String shopId) {
+        return reviewService.guideForShop(shopId);
     }
 
     @GetMapping
@@ -68,25 +82,22 @@ public class ReviewController {
     }
 
     @PostMapping
-    @Transactional
     public Review create(Authentication auth, @Valid @RequestBody CreateReviewRequest request) {
         AppUser user = access.requireUser(auth);
-        Review review = new Review();
-        review.setId(Ids.next("r"));
-        review.setCatalogProductId(request.catalogProductId());
-        review.setListingId(blankToNull(request.listingId()));
-        review.setShopId(request.shopId());
-        review.setBuyerId(user.getId());
-        review.setOrderId(blankToNull(request.orderId()));
-        review.setRating(request.rating());
-        review.setTitle(request.title() == null || request.title().isBlank() ? "Review" : request.title().trim());
-        review.setBody(request.body().trim());
-        review.setCreatedAt(Instant.now());
-        review.setHidden(false);
-        if (request.imageUrls() != null) {
-            review.getImageUrls().addAll(request.imageUrls());
-        }
-        return reviews.save(review);
+        return reviewService.create(
+                user,
+                new CreateCommand(
+                        request.catalogProductId(),
+                        request.listingId(),
+                        request.serviceId(),
+                        request.shopId(),
+                        request.orderId(),
+                        request.productQuality(),
+                        request.shopExperience(),
+                        request.staffScore(),
+                        request.title(),
+                        request.body(),
+                        request.imageUrls()));
     }
 
     @PostMapping("/{id}/reply")

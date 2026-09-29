@@ -19,6 +19,7 @@ import in.dukkan.repository.NeighborhoodRepository;
 import in.dukkan.repository.PartnerRepository;
 import in.dukkan.repository.SettingsRepository;
 import in.dukkan.repository.ShopRepository;
+import in.dukkan.service.ServiceabilityService;
 import in.dukkan.web.dto.ShopDtos.ShopView;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -32,6 +33,7 @@ import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -49,6 +51,7 @@ public class CatalogController {
     private final PartnerRepository partners;
     private final ShopViews shopViews;
     private final Access access;
+    private final ServiceabilityService serviceability;
 
     public CatalogController(
             CategoryRepository categories,
@@ -60,7 +63,8 @@ public class CatalogController {
             SettingsRepository settings,
             PartnerRepository partners,
             ShopViews shopViews,
-            Access access) {
+            Access access,
+            ServiceabilityService serviceability) {
         this.categories = categories;
         this.neighborhoods = neighborhoods;
         this.shops = shops;
@@ -71,6 +75,7 @@ public class CatalogController {
         this.partners = partners;
         this.shopViews = shopViews;
         this.access = access;
+        this.serviceability = serviceability;
     }
 
     @GetMapping("/categories")
@@ -84,27 +89,36 @@ public class CatalogController {
     }
 
     @GetMapping("/shops")
-    public List<ShopView> shops(Authentication auth) {
+    public List<ShopView> shops(
+            Authentication auth,
+            @RequestParam(required = false) Double lat,
+            @RequestParam(required = false) Double lng) {
         AppUser user = access.findUser(auth).orElse(null);
-        if (user == null) {
-            return shopViews.toViews(shops.findByStatus(ShopStatus.ACTIVE));
-        }
-        if (user.getRole() == Role.ADMIN) {
+        if (user != null && user.getRole() == Role.ADMIN) {
             return shopViews.toViews(shops.findAll());
         }
         Map<String, Shop> merged = new LinkedHashMap<>();
         for (Shop shop : shops.findByStatus(ShopStatus.ACTIVE)) {
-            merged.put(shop.getId(), shop);
+            if (serviceability.evaluate(shop, lat, lng).eligible()) {
+                merged.put(shop.getId(), shop);
+            }
         }
-        for (Shop shop : shops.findByOwnerUserId(user.getId())) {
-            merged.put(shop.getId(), shop);
+        if (user != null) {
+            for (Shop shop : shops.findByOwnerUserId(user.getId())) {
+                merged.put(shop.getId(), shop);
+            }
         }
         return shopViews.toViews(new ArrayList<>(merged.values()));
     }
 
     @GetMapping("/shops/{id}")
-    public ShopView shop(@PathVariable String id) {
+    public ShopView shop(
+            Authentication auth,
+            @PathVariable String id,
+            @RequestParam(required = false) Double lat,
+            @RequestParam(required = false) Double lng) {
         Shop shop = shops.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+        assertServiceable(auth, shop, lat, lng);
         return shopViews.toView(shop);
     }
 
@@ -165,12 +179,40 @@ public class CatalogController {
     }
 
     @GetMapping("/listings")
-    public List<Listing> listings() {
-        return listings.findAll();
+    public List<Listing> listings(
+            Authentication auth,
+            @RequestParam(required = false) Double lat,
+            @RequestParam(required = false) Double lng) {
+        AppUser user = access.findUser(auth).orElse(null);
+        if (user != null && user.getRole() == Role.ADMIN) {
+            return listings.findAll();
+        }
+        java.util.Set<String> owned = ownedShopIds(user);
+        List<Listing> visible = new ArrayList<>();
+        for (Listing listing : listings.findAll()) {
+            if (owned.contains(listing.getShopId())) {
+                visible.add(listing);
+                continue;
+            }
+            Shop shop = shops.findById(listing.getShopId()).orElse(null);
+            if (shop != null
+                    && shop.getStatus() == ShopStatus.ACTIVE
+                    && listing.getStatus() == in.dukkan.domain.ApprovalStatus.APPROVED
+                    && serviceability.evaluate(shop, lat, lng).eligible()) {
+                visible.add(listing);
+            }
+        }
+        return visible;
     }
 
     @GetMapping("/listings/shop/{shopId}")
-    public List<Listing> listingsByShop(@PathVariable String shopId) {
+    public List<Listing> listingsByShop(
+            Authentication auth,
+            @PathVariable String shopId,
+            @RequestParam(required = false) Double lat,
+            @RequestParam(required = false) Double lng) {
+        Shop shop = shops.findById(shopId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+        assertServiceable(auth, shop, lat, lng);
         return listings.findByShopId(shopId);
     }
 
@@ -187,5 +229,30 @@ public class CatalogController {
     @GetMapping("/partners")
     public List<Partner> partners() {
         return partners.findAll();
+    }
+
+    private void assertServiceable(Authentication auth, Shop shop, Double lat, Double lng) {
+        AppUser user = access.findUser(auth).orElse(null);
+        if (user != null && (user.getRole() == Role.ADMIN || shop.getOwnerUserId().equals(user.getId()))) {
+            return;
+        }
+        var verdict = serviceability.evaluate(shop, lat, lng);
+        if (!verdict.eligible()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, verdict.message());
+        }
+    }
+
+    private java.util.Set<String> ownedShopIds(AppUser user) {
+        if (user == null || user.getRole() != Role.SELLER) {
+            return java.util.Set.of();
+        }
+        java.util.Set<String> ids = new java.util.HashSet<>();
+        for (Shop shop : shops.findByOwnerUserId(user.getId())) {
+            ids.add(shop.getId());
+        }
+        if (user.getShopId() != null) {
+            ids.add(user.getShopId());
+        }
+        return ids;
     }
 }

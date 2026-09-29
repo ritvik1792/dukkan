@@ -2,11 +2,14 @@ package in.dukkan.service;
 
 import in.dukkan.common.Ids;
 import in.dukkan.domain.AppUser;
+import in.dukkan.domain.Category;
+import in.dukkan.domain.CategoryKind;
 import in.dukkan.domain.ProviderService;
 import in.dukkan.domain.Role;
 import in.dukkan.domain.ServiceStatus;
 import in.dukkan.domain.Shop;
 import in.dukkan.domain.ShopStatus;
+import in.dukkan.repository.CategoryRepository;
 import in.dukkan.repository.ProviderServiceRepository;
 import in.dukkan.repository.ShopRepository;
 import java.math.BigDecimal;
@@ -37,10 +40,13 @@ public class ServiceCatalogService {
 
     private final ProviderServiceRepository services;
     private final ShopRepository shops;
+    private final CategoryRepository categories;
 
-    public ServiceCatalogService(ProviderServiceRepository services, ShopRepository shops) {
+    public ServiceCatalogService(
+            ProviderServiceRepository services, ShopRepository shops, CategoryRepository categories) {
         this.services = services;
         this.shops = shops;
+        this.categories = categories;
     }
 
     public List<ProviderService> listByProvider(String providerId, boolean activeOnly) {
@@ -114,7 +120,16 @@ public class ServiceCatalogService {
             service.setDescription(blankToNull(input.description()));
         }
         if (input.categoryId() != null) {
-            service.setCategoryId(blankToNull(input.categoryId()));
+            String categoryId = blankToNull(input.categoryId());
+            if (categoryId != null) {
+                Category category = categories.findById(categoryId).orElse(null);
+                if (category != null && category.getKind() == CategoryKind.PRODUCT) {
+                    throw new ResponseStatusException(
+                            HttpStatus.BAD_REQUEST,
+                            "Product categories use the product form. Stock, MRP, and brand are not part of a service.");
+                }
+            }
+            service.setCategoryId(categoryId);
         }
         if (input.price() != null || creating) {
             service.setPrice(input.price());

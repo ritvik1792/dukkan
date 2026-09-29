@@ -22,8 +22,14 @@ public class Review extends AuditableEntity {
     @Id
     private String id;
 
-    @Column(name = "catalog_product_id", nullable = false)
+    @Column(name = "catalog_product_id")
     private String catalogProductId;
+
+    @Column(name = "service_id")
+    private String serviceId;
+
+    @Column(name = "target_kind", nullable = false)
+    private String targetKind = "PRODUCT";
 
     @Column(name = "listing_id")
     private String listingId;
@@ -40,8 +46,20 @@ public class Review extends AuditableEntity {
     @Column(nullable = false)
     private String title;
 
-    @Column(nullable = false)
+    @Column
     private String body;
+
+    @Column(name = "verified_purchase", nullable = false)
+    private boolean verifiedPurchase;
+
+    @Column(name = "product_quality")
+    private Integer productQuality;
+
+    @Column(name = "shop_experience")
+    private Integer shopExperience;
+
+    @Column(name = "staff_score")
+    private Integer staffScore;
 
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
@@ -82,6 +100,22 @@ public class Review extends AuditableEntity {
 
     public void setCatalogProductId(String catalogProductId) {
         this.catalogProductId = catalogProductId;
+    }
+
+    public String getServiceId() {
+        return serviceId;
+    }
+
+    public void setServiceId(String serviceId) {
+        this.serviceId = serviceId;
+    }
+
+    public String getTargetKind() {
+        return targetKind;
+    }
+
+    public void setTargetKind(String targetKind) {
+        this.targetKind = targetKind;
     }
 
     public String getListingId() {
@@ -170,6 +204,38 @@ public class Review extends AuditableEntity {
 
     public void setHidden(boolean hidden) {
         this.hidden = hidden;
+    }
+
+    public boolean isVerifiedPurchase() {
+        return verifiedPurchase;
+    }
+
+    public void setVerifiedPurchase(boolean verifiedPurchase) {
+        this.verifiedPurchase = verifiedPurchase;
+    }
+
+    public Integer getProductQuality() {
+        return productQuality;
+    }
+
+    public void setProductQuality(Integer productQuality) {
+        this.productQuality = productQuality;
+    }
+
+    public Integer getShopExperience() {
+        return shopExperience;
+    }
+
+    public void setShopExperience(Integer shopExperience) {
+        this.shopExperience = shopExperience;
+    }
+
+    public Integer getStaffScore() {
+        return staffScore;
+    }
+
+    public void setStaffScore(Integer staffScore) {
+        this.staffScore = staffScore;
     }
 
     public List<String> getImageUrls() {

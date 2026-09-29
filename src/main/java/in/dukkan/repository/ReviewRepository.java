@@ -10,4 +10,8 @@ public interface ReviewRepository extends JpaRepository<Review, String> {
     List<Review> findByShopIdOrderByCreatedAtDesc(String shopId);
 
     List<Review> findAllByOrderByCreatedAtDesc();
+
+    List<Review> findByBuyerIdAndOrderId(String buyerId, String orderId);
+
+    List<Review> findByBuyerIdAndServiceId(String buyerId, String serviceId);
 }

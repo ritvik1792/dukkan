@@ -110,6 +110,9 @@ public class ShopController {
         if (request.imageUrl() != null) {
             shop.setImageUrl(request.imageUrl().isBlank() ? null : request.imageUrl().trim());
         }
+        if (request.serviceRadiusKm() != null && request.serviceRadiusKm() > 0) {
+            shop.setServiceRadiusKm(request.serviceRadiusKm());
+        }
         if (request.categoryIds() != null) {
             if (shop.getCategoryIds() == null) {
                 shop.setCategoryIds(new HashSet<>());

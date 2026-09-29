@@ -4,12 +4,15 @@ import in.dukkan.common.Ids;
 import in.dukkan.domain.AppUser;
 import in.dukkan.domain.ApprovalStatus;
 import in.dukkan.domain.CatalogProduct;
+import in.dukkan.domain.Category;
+import in.dukkan.domain.CategoryKind;
 import in.dukkan.domain.Listing;
 import in.dukkan.domain.ListingTag;
 import in.dukkan.domain.Role;
 import in.dukkan.domain.Shop;
 import in.dukkan.domain.TagKind;
 import in.dukkan.repository.CatalogProductRepository;
+import in.dukkan.repository.CategoryRepository;
 import in.dukkan.repository.ListingRepository;
 import in.dukkan.repository.ShopRepository;
 import jakarta.validation.Valid;
@@ -63,16 +66,19 @@ public class InventoryController {
     private final CatalogProductRepository catalog;
     private final ListingRepository listings;
     private final ShopRepository shops;
+    private final CategoryRepository categories;
     private final Access access;
 
     public InventoryController(
             CatalogProductRepository catalog,
             ListingRepository listings,
             ShopRepository shops,
+            CategoryRepository categories,
             Access access) {
         this.catalog = catalog;
         this.listings = listings;
         this.shops = shops;
+        this.categories = categories;
         this.access = access;
     }
 
@@ -105,6 +111,7 @@ public class InventoryController {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "catalogProductId and shopId are required");
         }
         assertCanEditShop(user, request.shopId());
+        assertProductCategory(request.catalogProductId());
         Listing listing = new Listing();
         listing.setId(Ids.next("l"));
         listing.setCatalogProductId(request.catalogProductId());
@@ -121,6 +128,11 @@ public class InventoryController {
         Listing listing = listings.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
         assertCanEditShop(user, listing.getShopId());
+        if (request.catalogProductId() != null) {
+            assertProductCategory(request.catalogProductId());
+        } else {
+            assertProductCategory(listing.getCatalogProductId());
+        }
         apply(listing, request);
         return listings.save(listing);
     }
@@ -152,10 +164,24 @@ public class InventoryController {
         gallery.clear();
         // Flush the delete before insert. clear()+addAll on an @OrderColumn
         // element collection otherwise keeps the old rows and the picture shows twice.
-        if (product.getId() != null && catalog.existsById(product.getId()) && !next.isEmpty()) {
+        if (product.getId() != null && catalog.existsById(product.getId())) {
             catalog.saveAndFlush(product);
         }
         gallery.addAll(next);
+    }
+
+    private void assertProductCategory(String catalogProductId) {
+        CatalogProduct product = catalog.findById(catalogProductId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Product not found"));
+        if (product.getCategoryId() == null) {
+            return;
+        }
+        Category category = categories.findById(product.getCategoryId()).orElse(null);
+        if (category != null && category.getKind() == CategoryKind.SERVICE) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Service categories use the service form. Product stock, MRP, and brand are not saved.");
+        }
     }
 
     private static List<String> distinctGallery(String imageUrl, List<String> incoming) {
@@ -163,18 +189,40 @@ public class InventoryController {
         if (incoming == null) {
             return List.of();
         }
-        String main = imageUrl == null ? "" : imageUrl.trim();
+        String main = mediaKey(imageUrl);
         for (String raw : incoming) {
             if (raw == null || raw.isBlank()) {
                 continue;
             }
             String url = raw.trim();
-            if (!main.isEmpty() && url.equals(main)) {
+            if (!main.isEmpty() && mediaKey(url).equals(main)) {
+                continue;
+            }
+            if (!urls.stream().noneMatch(existing -> mediaKey(existing).equals(mediaKey(url)))) {
                 continue;
             }
             urls.add(url);
         }
         return new ArrayList<>(urls);
+    }
+
+    private static String mediaKey(String url) {
+        if (url == null) {
+            return "";
+        }
+        String trimmed = url.trim();
+        int query = trimmed.indexOf('?');
+        if (query >= 0) {
+            trimmed = trimmed.substring(0, query);
+        }
+        int hash = trimmed.indexOf('#');
+        if (hash >= 0) {
+            trimmed = trimmed.substring(0, hash);
+        }
+        while (trimmed.endsWith("/")) {
+            trimmed = trimmed.substring(0, trimmed.length() - 1);
+        }
+        return trimmed;
     }
 
     private void apply(Listing listing, ListingWriteRequest request) {

@@ -33,6 +33,7 @@ public class SecurityConfig {
         "/api/auth/otp/verify",
         "/api/auth/forgot-password",
         "/api/auth/reset-password",
+        "/api/delivery/check",
         "/error"
     };
 
@@ -47,6 +48,7 @@ public class SecurityConfig {
         "/api/settings",
         "/api/partners",
         "/api/reviews",
+        "/api/reviews/**",
         "/api/coupons",
         "/api/geo/**",
         "/api/search",

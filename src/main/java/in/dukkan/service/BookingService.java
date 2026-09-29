@@ -21,19 +21,30 @@ import org.springframework.web.server.ResponseStatusException;
 @Service
 public class BookingService {
 
-    public record CreateBookingInput(String serviceId, Instant scheduledStart, Instant scheduledEnd, String notes) {}
+    public record CreateBookingInput(
+            String serviceId,
+            Instant scheduledStart,
+            Instant scheduledEnd,
+            String notes,
+            Double buyerLat,
+            Double buyerLng) {}
 
     public record StatusPatch(BookingStatus status) {}
 
     private final BookingRepository bookings;
     private final ProviderServiceRepository services;
     private final ShopRepository shops;
+    private final ServiceabilityService serviceability;
 
     public BookingService(
-            BookingRepository bookings, ProviderServiceRepository services, ShopRepository shops) {
+            BookingRepository bookings,
+            ProviderServiceRepository services,
+            ShopRepository shops,
+            ServiceabilityService serviceability) {
         this.bookings = bookings;
         this.services = services;
         this.shops = shops;
+        this.serviceability = serviceability;
     }
 
     public List<Booking> listForCustomer(String customerId) {
@@ -73,6 +84,7 @@ public class BookingService {
         if (!provider.isBookingsAllowed() || !provider.isServicesAllowed()) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Provider does not accept bookings");
         }
+        serviceability.requireEligible(provider, input.buyerLat(), input.buyerLng());
         Instant now = Instant.now();
         Booking booking = new Booking();
         booking.setId(Ids.next("bk"));

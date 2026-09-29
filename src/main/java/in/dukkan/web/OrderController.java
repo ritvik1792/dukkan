@@ -2,6 +2,7 @@ package in.dukkan.web;
 
 import in.dukkan.common.Ids;
 import in.dukkan.domain.AppUser;
+import in.dukkan.domain.CatalogProduct;
 import in.dukkan.domain.CustomerOrder;
 import in.dukkan.domain.DeliveryMode;
 import in.dukkan.domain.Listing;
@@ -11,11 +12,16 @@ import in.dukkan.domain.OrderItem;
 import in.dukkan.domain.OrderStatus;
 import in.dukkan.domain.Role;
 import in.dukkan.domain.Shop;
+import in.dukkan.repository.CatalogProductRepository;
 import in.dukkan.repository.ListingRepository;
 import in.dukkan.repository.OrderRepository;
 import in.dukkan.repository.ShopPartnerRepository;
 import in.dukkan.repository.ShopRepository;
+import in.dukkan.service.GeocodeService;
 import in.dukkan.service.ProductRequestService;
+import in.dukkan.service.ServiceabilityService;
+import in.dukkan.web.dto.GeoDtos.ReverseGeocodeResponse;
+import jakarta.persistence.EntityManager;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
@@ -53,7 +59,21 @@ public class OrderController {
             BigDecimal discount,
             String couponCode,
             String requestId,
-            String offerId) {}
+            String offerId,
+            Double buyerLat,
+            Double buyerLng,
+            String pinCode) {}
+
+    public record PackingSlipLine(String name, int quantity, BigDecimal unitPrice) {}
+
+    public record PackingSlipView(
+            String orderId,
+            String shopName,
+            String customerName,
+            String address,
+            Instant placedAt,
+            Instant packingBy,
+            List<PackingSlipLine> items) {}
 
     public record OrderPatch(
             OrderStatus status, String partnerId, Instant packingBy, Instant readyBy, Instant deliverBy) {}
@@ -63,7 +83,11 @@ public class OrderController {
     private final ShopRepository shops;
     private final ShopPartnerRepository shopPartners;
     private final ProductRequestService productRequests;
+    private final CatalogProductRepository catalog;
+    private final ServiceabilityService serviceability;
+    private final GeocodeService geocode;
     private final Access access;
+    private final EntityManager entityManager;
 
     public OrderController(
             OrderRepository orders,
@@ -71,13 +95,21 @@ public class OrderController {
             ShopRepository shops,
             ShopPartnerRepository shopPartners,
             ProductRequestService productRequests,
-            Access access) {
+            CatalogProductRepository catalog,
+            ServiceabilityService serviceability,
+            GeocodeService geocode,
+            Access access,
+            EntityManager entityManager) {
         this.orders = orders;
         this.listings = listings;
         this.shops = shops;
         this.shopPartners = shopPartners;
         this.productRequests = productRequests;
+        this.catalog = catalog;
+        this.serviceability = serviceability;
+        this.geocode = geocode;
         this.access = access;
+        this.entityManager = entityManager;
     }
 
     @GetMapping
@@ -88,7 +120,7 @@ public class OrderController {
         }
         Map<String, CustomerOrder> merged = new LinkedHashMap<>();
         for (CustomerOrder order : orders.findByBuyerIdOrderByCreatedAtDesc(user.getId())) {
-            merged.put(order.getId(), order);
+            merged.put(order.getId(), forViewer(user, order));
         }
         if (user.getRole() == Role.SELLER) {
             for (Shop shop : shops.findByOwnerUserId(user.getId())) {
@@ -104,8 +136,37 @@ public class OrderController {
     public CustomerOrder one(Authentication auth, @PathVariable String id) {
         CustomerOrder order = orders.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
-        assertCanView(access.requireUser(auth), order);
-        return order;
+        AppUser user = access.requireUser(auth);
+        assertCanView(user, order);
+        return forViewer(user, order);
+    }
+
+    @GetMapping("/{id}/packing-slip")
+    public PackingSlipView packingSlip(Authentication auth, @PathVariable String id) {
+        CustomerOrder order = orders.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+        AppUser user = access.requireUser(auth);
+        assertCanManage(user, order);
+        Shop shop = shops.findById(order.getShopId()).orElse(null);
+        AppUser buyer = null;
+        List<PackingSlipLine> lines = new ArrayList<>();
+        for (OrderItem item : order.getItems()) {
+            CatalogProduct product = item.getCatalogProductId() == null
+                    ? null
+                    : catalog.findById(item.getCatalogProductId()).orElse(null);
+            lines.add(new PackingSlipLine(
+                    product == null ? item.getListingId() : product.getName(),
+                    item.getQuantity(),
+                    item.getUnitPrice()));
+        }
+        return new PackingSlipView(
+                order.getId(),
+                shop == null ? order.getShopId() : shop.getName(),
+                buyer == null ? order.getBuyerId() : buyer.getName(),
+                order.getAddress(),
+                order.getCreatedAt(),
+                order.getPackingBy(),
+                lines);
     }
 
     @PostMapping
@@ -130,6 +191,18 @@ public class OrderController {
         if (linkedOffer != null && !shop.getId().equals(linkedOffer.getShopId())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Order shop must match selected offer");
         }
+        Double buyerLat = request.buyerLat();
+        Double buyerLng = request.buyerLng();
+        if (buyerLat == null || buyerLng == null) {
+            if (request.pinCode() == null || request.pinCode().isBlank()) {
+                throw new ResponseStatusException(
+                        HttpStatus.BAD_REQUEST, "Choose a delivery location before placing the order.");
+            }
+            ReverseGeocodeResponse point = geocode.searchPostalCode(request.pinCode());
+            buyerLat = point.lat();
+            buyerLng = point.lng();
+        }
+        serviceability.requireEligible(shop, buyerLat, buyerLng);
 
         Instant now = Instant.now();
         CustomerOrder order = new CustomerOrder();
@@ -139,6 +212,9 @@ public class OrderController {
         order.setDeliveryMode(first.deliveryMode());
         order.setStatus(OrderStatus.PLACED);
         order.setAddress(request.address());
+        order.setBuyerLat(buyerLat);
+        order.setBuyerLng(buyerLng);
+        order.setBuyerPin(request.pinCode() == null || request.pinCode().isBlank() ? null : request.pinCode().trim());
         order.setCreatedAt(now);
         if (request.paymentMethod() != null && !request.paymentMethod().isBlank()) {
             order.setPaymentMethod(request.paymentMethod());
@@ -161,8 +237,14 @@ public class OrderController {
             Listing listing = listings.findById(line.listingId())
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Listing not found"));
             if (!listing.getShopId().equals(shop.getId())) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Items must be from one shop");
+                throw new ResponseStatusException(
+                        HttpStatus.BAD_REQUEST,
+                        "Each seller is checked separately. These items are not all from " + shop.getName() + ".");
             }
+            if (listing.getStock() < line.quantity()) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Not enough stock for this order");
+            }
+            listing.setStock(listing.getStock() - line.quantity());
             BigDecimal unitPrice = listing.getSellerPrice();
             if (linkedOffer != null
                     && listing.getId().equals(linkedOffer.getListingId())) {
@@ -224,6 +306,18 @@ public class OrderController {
             order.setDeliverBy(request.deliverBy());
         }
         return orders.save(order);
+    }
+
+    private CustomerOrder forViewer(AppUser user, CustomerOrder order) {
+        if (user.getRole() == Role.ADMIN || ownsShop(user, order.getShopId())) {
+            return order;
+        }
+        if (entityManager.contains(order)) {
+            entityManager.detach(order);
+        }
+        order.setPackingBy(null);
+        order.setReadyBy(null);
+        return order;
     }
 
     private void assertCanView(AppUser user, CustomerOrder order) {

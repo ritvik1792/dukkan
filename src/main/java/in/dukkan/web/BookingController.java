@@ -24,7 +24,13 @@ import org.springframework.web.server.ResponseStatusException;
 @RequestMapping("/api")
 public class BookingController {
 
-    public record CreateBookingBody(String serviceId, Instant scheduledStart, Instant scheduledEnd, String notes) {}
+    public record CreateBookingBody(
+            String serviceId,
+            Instant scheduledStart,
+            Instant scheduledEnd,
+            String notes,
+            Double buyerLat,
+            Double buyerLng) {}
 
     public record BookingStatusBody(BookingStatus status) {}
 
@@ -40,7 +46,14 @@ public class BookingController {
     public Booking create(Authentication auth, @RequestBody CreateBookingBody body) {
         AppUser user = access.requireUser(auth);
         return bookings.create(
-                user, new CreateBookingInput(body.serviceId(), body.scheduledStart(), body.scheduledEnd(), body.notes()));
+                user,
+                new CreateBookingInput(
+                        body.serviceId(),
+                        body.scheduledStart(),
+                        body.scheduledEnd(),
+                        body.notes(),
+                        body.buyerLat(),
+                        body.buyerLng()));
     }
 
     @GetMapping("/bookings/mine")

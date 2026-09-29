@@ -46,7 +46,7 @@ class BookingServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new BookingService(bookings, services, shops);
+        service = new BookingService(bookings, services, shops, new ServiceabilityService());
         customer = user("buyer-1", Role.BUYER, null);
         providerUser = user("seller-1", Role.SELLER, "shop-1");
         provider = shop("shop-1", true, true);
@@ -60,7 +60,8 @@ class BookingServiceTest {
     @Test
     void createStartsPending() {
         Booking booking = service.create(
-                customer, new CreateBookingInput("svc-1", Instant.parse("2026-10-01T10:00:00Z"), null, "note"));
+                customer,
+                new CreateBookingInput("svc-1", Instant.parse("2026-10-01T10:00:00Z"), null, "note", 28.6, 77.2));
         assertEquals(BookingStatus.PENDING, booking.getStatus());
         assertEquals("buyer-1", booking.getCustomerId());
         assertEquals("shop-1", booking.getProviderId());
@@ -128,6 +129,9 @@ class BookingServiceTest {
         shop.setStatus(ShopStatus.ACTIVE);
         shop.setServicesAllowed(services);
         shop.setBookingsAllowed(bookings);
+        shop.setLat(28.6);
+        shop.setLng(77.2);
+        shop.setServiceRadiusKm(25);
         return shop;
     }
 

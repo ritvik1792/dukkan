@@ -11,6 +11,7 @@ import in.dukkan.domain.AppUser;
 import in.dukkan.domain.Role;
 import in.dukkan.domain.Shop;
 import in.dukkan.domain.ShopStatus;
+import in.dukkan.repository.CategoryRepository;
 import in.dukkan.repository.ProviderServiceRepository;
 import in.dukkan.repository.ShopRepository;
 import in.dukkan.service.ServiceCatalogService.ServiceWrite;
@@ -31,6 +32,7 @@ class ServiceCatalogServiceTest {
 
     @Mock ProviderServiceRepository services;
     @Mock ShopRepository shops;
+    @Mock CategoryRepository categories;
 
     ServiceCatalogService catalog;
 
@@ -39,7 +41,8 @@ class ServiceCatalogServiceTest {
 
     @BeforeEach
     void setUp() {
-        catalog = new ServiceCatalogService(services, shops);
+        catalog = new ServiceCatalogService(services, shops, categories);
+        when(categories.findById(any())).thenReturn(Optional.empty());
         seller = new AppUser();
         seller.setId("seller-1");
         seller.setRole(Role.SELLER);

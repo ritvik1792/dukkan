@@ -16,6 +16,7 @@ import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.server.ResponseStatusException;
@@ -49,6 +50,76 @@ public class GeocodeService {
                 .defaultHeader(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE)
                 .build();
         this.cacheTtlMs = Duration.ofHours(Math.max(1, cacheTtlHours)).toMillis();
+    }
+
+    public ReverseGeocodeResponse searchPostalCode(String rawPin) {
+        String pin = rawPin == null ? "" : rawPin.trim();
+        if (!pin.matches("\\d{6}")) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Enter a 6-digit PIN code.");
+        }
+        String key = "pin:" + pin;
+        ReverseGeocodeResponse cached = fromCache(key);
+        if (cached != null) {
+            return cached;
+        }
+        synchronized (lock) {
+            cached = fromCache(key);
+            if (cached != null) {
+                return cached;
+            }
+            throttleLocked();
+            List<NominatimResponse> rows;
+            try {
+                rows = nominatim.get()
+                        .uri(uriBuilder -> uriBuilder
+                                .path("/search")
+                                .queryParam("postalcode", pin)
+                                .queryParam("country", "India")
+                                .queryParam("format", "json")
+                                .queryParam("addressdetails", 1)
+                                .queryParam("limit", 1)
+                                .build())
+                        .retrieve()
+                        .onStatus(HttpStatusCode::isError, (request, response) -> {
+                            throw lookupFailed();
+                        })
+                        .body(new ParameterizedTypeReference<List<NominatimResponse>>() {});
+            } catch (ResponseStatusException e) {
+                throw e;
+            } catch (RestClientException e) {
+                throw lookupFailed();
+            }
+            if (rows == null || rows.isEmpty() || rows.get(0).lat() == null || rows.get(0).lon() == null) {
+                throw new ResponseStatusException(
+                        HttpStatus.BAD_REQUEST, "Could not resolve this PIN code. Check the number and try again.");
+            }
+            NominatimResponse raw = rows.get(0);
+            double lat;
+            double lng;
+            try {
+                lat = Double.parseDouble(raw.lat());
+                lng = Double.parseDouble(raw.lon());
+            } catch (NumberFormatException e) {
+                throw new ResponseStatusException(
+                        HttpStatus.BAD_REQUEST, "Could not resolve this PIN code. Check the number and try again.");
+            }
+            validate(lat, lng);
+            NominatimAddress address = raw.address();
+            ReverseGeocodeResponse resolved = new ReverseGeocodeResponse(
+                    formatAddress(address, raw.displayName()),
+                    blankToNull(address == null ? null : address.houseNumber()),
+                    blankToNull(address == null ? null : address.road()),
+                    blankToNull(address == null ? null : suburbOf(address)),
+                    blankToNull(address == null ? null : cityOf(address)),
+                    blankToNull(address == null ? null : address.state()),
+                    pin,
+                    blankToNull(address == null ? null : address.country()),
+                    lat,
+                    lng,
+                    blankToNull(raw.displayName()));
+            store(key, resolved);
+            return resolved;
+        }
     }
 
     public ReverseGeocodeResponse reverse(double lat, double lng) {

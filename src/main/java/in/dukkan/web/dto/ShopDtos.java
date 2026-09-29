@@ -53,7 +53,8 @@ public final class ShopDtos {
             String serviceArea,
             String profession,
             List<ShopEmployee> employees,
-            List<ShopTransport> transport) {
+            List<ShopTransport> transport,
+            int serviceRadiusKm) {
 
         public static ShopView from(Shop shop, List<ShopEmployee> employees, List<ShopTransport> transport) {
             return new ShopView(
@@ -97,7 +98,8 @@ public final class ShopDtos {
                     shop.getServiceArea(),
                     shop.getProfession(),
                     employees,
-                    transport);
+                    transport,
+                    shop.getServiceRadiusKm() > 0 ? shop.getServiceRadiusKm() : 25);
         }
     }
 
@@ -130,7 +132,8 @@ public final class ShopDtos {
             Double lat,
             Double lng,
             String imageUrl,
-            List<String> categoryIds) {}
+            List<String> categoryIds,
+            Integer serviceRadiusKm) {}
 
     public record EmployeeWrite(
             String shopId, String name, String role, String phone, Boolean available) {}

@@ -84,18 +84,21 @@ public class DiscoverySearchService {
     private final ShopRepository shops;
     private final ProviderServiceRepository services;
     private final ShopViews shopViews;
+    private final ServiceabilityService serviceability;
 
     public DiscoverySearchService(
             CatalogProductRepository catalog,
             ListingRepository listings,
             ShopRepository shops,
             ProviderServiceRepository services,
-            ShopViews shopViews) {
+            ShopViews shopViews,
+            ServiceabilityService serviceability) {
         this.catalog = catalog;
         this.listings = listings;
         this.shops = shops;
         this.services = services;
         this.shopViews = shopViews;
+        this.serviceability = serviceability;
     }
 
     public SearchResponse search(String rawQuery, String filter, Double lat, Double lng, String categoryId) {
@@ -136,7 +139,9 @@ public class DiscoverySearchService {
             }
         }
 
-        List<Shop> activeShops = shops.findByStatus(ShopStatus.ACTIVE);
+        List<Shop> activeShops = shops.findByStatus(ShopStatus.ACTIVE).stream()
+                .filter(shop -> serviceability.evaluate(shop, lat, lng).eligible())
+                .toList();
         Map<String, Shop> shopById = activeShops.stream()
                 .collect(Collectors.toMap(Shop::getId, s -> s, (a, b) -> a, LinkedHashMap::new));
 
@@ -236,6 +241,9 @@ public class DiscoverySearchService {
             }
         }
 
+        products.removeIf(hit -> listings.findByCatalogProductId(hit.id()).stream()
+                .noneMatch(listing -> listing.getStatus() == ApprovalStatus.APPROVED
+                        && shopById.containsKey(listing.getShopId())));
         return new SearchResponse(query, normalizedFilter, products, shopHits, serviceHits, people);
     }
 

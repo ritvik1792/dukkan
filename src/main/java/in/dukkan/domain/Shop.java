@@ -126,6 +126,9 @@ public class Shop extends AuditableEntity {
     @Column(name = "service_area")
     private String serviceArea;
 
+    @Column(name = "service_radius_km", nullable = false)
+    private int serviceRadiusKm = 25;
+
     private String profession;
 
     @ElementCollection(fetch = FetchType.EAGER)
@@ -427,5 +430,13 @@ public class Shop extends AuditableEntity {
 
     public void setProfession(String profession) {
         this.profession = profession;
+    }
+
+    public int getServiceRadiusKm() {
+        return serviceRadiusKm;
+    }
+
+    public void setServiceRadiusKm(int serviceRadiusKm) {
+        this.serviceRadiusKm = serviceRadiusKm;
     }
 }

@@ -22,22 +22,24 @@ public class ShopMatchingService implements ShopMatcher {
     private final ShopRepository shops;
     private final SettingsRepository settings;
     private final StatisticsService statistics;
+    private final ServiceabilityService serviceability;
 
     public ShopMatchingService(
             ListingRepository listings,
             ShopRepository shops,
             SettingsRepository settings,
-            StatisticsService statistics) {
+            StatisticsService statistics,
+            ServiceabilityService serviceability) {
         this.listings = listings;
         this.shops = shops;
         this.settings = settings;
         this.statistics = statistics;
+        this.serviceability = serviceability;
     }
 
     @Override
     public List<RankedCandidate> findCandidates(String catalogProductId, double buyerLat, double buyerLng) {
         PlatformSettings config = settings.findById("default").orElseThrow();
-        double radiusKm = config.getDeliveryRadiusKm();
         int maxShops = Math.max(1, config.getRequestMaxShops());
 
         List<Listing> productListings = listings.findByCatalogProductId(catalogProductId).stream()
@@ -53,10 +55,11 @@ public class ShopMatchingService implements ShopMatcher {
             if (!shop.isNotificationsEnabled() || !shop.isNotifyStockConfirmation()) {
                 continue;
             }
-            double distance = GeoDistance.haversineKm(buyerLat, buyerLng, shop.getLat(), shop.getLng());
-            if (distance > radiusKm) {
+            ServiceabilityService.Verdict verdict = serviceability.evaluate(shop, buyerLat, buyerLng);
+            if (!verdict.eligible() || verdict.distanceKm() == null) {
                 continue;
             }
+            double distance = verdict.distanceKm();
             double score = rankScore(shop, distance);
             ranked.add(new RankedCandidate(shop, listing, distance, score));
         }

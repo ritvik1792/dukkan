@@ -51,6 +51,15 @@ public class CustomerOrder extends AuditableEntity {
     @Column(nullable = false)
     private String address;
 
+    @Column(name = "buyer_lat")
+    private Double buyerLat;
+
+    @Column(name = "buyer_lng")
+    private Double buyerLng;
+
+    @Column(name = "buyer_pin")
+    private String buyerPin;
+
     @Column(name = "partner_id")
     private String partnerId;
 
@@ -164,6 +173,30 @@ public class CustomerOrder extends AuditableEntity {
 
     public void setAddress(String address) {
         this.address = address;
+    }
+
+    public Double getBuyerLat() {
+        return buyerLat;
+    }
+
+    public void setBuyerLat(Double buyerLat) {
+        this.buyerLat = buyerLat;
+    }
+
+    public Double getBuyerLng() {
+        return buyerLng;
+    }
+
+    public void setBuyerLng(Double buyerLng) {
+        this.buyerLng = buyerLng;
+    }
+
+    public String getBuyerPin() {
+        return buyerPin;
+    }
+
+    public void setBuyerPin(String buyerPin) {
+        this.buyerPin = buyerPin;
     }
 
     public String getPartnerId() {
