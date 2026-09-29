@@ -12,6 +12,14 @@ spring:
     url: ${DUKKAN_DB_URL}
     username: ${DUKKAN_DB_USER}
     password: ${DUKKAN_DB_PASSWORD}
+    hikari:
+      # db-f1-micro keeps about 22 usable connections. A deploy runs the old
+      # revision and the new one together, so each instance must stay small.
+      maximum-pool-size: ${DUKKAN_DB_POOL_SIZE:3}
+      minimum-idle: 1
+      idle-timeout: 30000
+      max-lifetime: 300000
+      connection-timeout: 10000
 
 app:
   cors:

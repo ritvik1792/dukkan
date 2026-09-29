@@ -13,7 +13,7 @@ spec:
       annotations:
         run.googleapis.com/cloudsql-instances: PROJECT_ID:REGION:SQL_INSTANCE
         autoscaling.knative.dev/minScale: "0"
-        autoscaling.knative.dev/maxScale: "4"
+        autoscaling.knative.dev/maxScale: "2"
     spec:
       containerConcurrency: 80
       timeoutSeconds: 300

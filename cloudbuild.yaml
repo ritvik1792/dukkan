@@ -19,6 +19,8 @@ steps:
       - --image=${_IMAGE}
       - --region=asia-south1
       - --platform=managed
+      - --max-instances=2
+      - --update-env-vars=SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE=3,SPRING_DATASOURCE_HIKARI_MINIMUM_IDLE=1
       - --quiet
 images:
   - ${_IMAGE}
