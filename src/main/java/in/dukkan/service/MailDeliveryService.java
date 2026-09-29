@@ -56,14 +56,41 @@ public class MailDeliveryService {
             return false;
         }
 
+        return deliver(to, subject, body, null);
+    }
+
+    /** Plain text plus an HTML part, so a long reset URL stays a visible link. */
+    public boolean sendHtml(String to, String subject, String plainBody, String htmlBody) {
+        log.info(
+                "MAIL to={} subject={} mailConfigured={} body=\n{}",
+                to,
+                subject,
+                isMailConfigured(),
+                plainBody);
+        if (!isMailConfigured()) {
+            log.warn(
+                    "mail not configured, link logged "
+                            + "(set DUKKAN_MAIL_HOST / DUKKAN_MAIL_USERNAME / DUKKAN_MAIL_PASSWORD "
+                            + "for free Gmail SMTP in .env)");
+            return false;
+        }
+        return deliver(to, subject, plainBody, htmlBody);
+    }
+
+    private boolean deliver(String to, String subject, String plainBody, String htmlBody) {
         try {
             JavaMailSender sender = mailSender.getObject();
             MimeMessage message = sender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(message, false, "UTF-8");
+            boolean html = htmlBody != null && !htmlBody.isBlank();
+            MimeMessageHelper helper = new MimeMessageHelper(message, html, "UTF-8");
             helper.setFrom(fromAddress);
             helper.setTo(to);
             helper.setSubject(subject);
-            helper.setText(body, false);
+            if (html) {
+                helper.setText(plainBody, htmlBody);
+            } else {
+                helper.setText(plainBody, false);
+            }
             sender.send(message);
             return true;
         } catch (Exception ex) {

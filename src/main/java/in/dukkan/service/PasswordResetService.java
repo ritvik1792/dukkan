@@ -113,8 +113,17 @@ public class PasswordResetService {
                 If you did not request this, you can ignore this message.
                 """
                         .formatted(ttlMinutes, link);
+        String safeLink = htmlEscape(link);
+        String html =
+                """
+                <p>Reset your pinkCarrot password. This link expires in %d minutes and works once.</p>
+                <p><a href="%s">Reset your password</a></p>
+                <p>If that does not open, copy this address into your browser:<br><a href="%s">%s</a></p>
+                <p>If you did not request this, you can ignore this message.</p>
+                """
+                        .formatted(ttlMinutes, safeLink, safeLink, safeLink);
 
-        boolean sent = mail.sendText(user.getEmail(), "Reset your pinkCarrot password", body);
+        boolean sent = mail.sendHtml(user.getEmail(), "Reset your pinkCarrot password", body, html);
         if (!sent) {
             if (!mail.isMailConfigured()) {
                 log.info("mail not configured, link logged for user {}: {}", user.getId(), link);
@@ -183,6 +192,13 @@ public class PasswordResetService {
         } catch (Exception ex) {
             throw new IllegalStateException("SHA-256 unavailable", ex);
         }
+    }
+
+    private static String htmlEscape(String value) {
+        return value.replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+                .replace("\"", "&quot;");
     }
 
     private static String pad(String secret) {

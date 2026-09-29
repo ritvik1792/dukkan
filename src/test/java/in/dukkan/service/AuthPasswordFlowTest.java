@@ -75,7 +75,7 @@ class AuthPasswordFlowTest {
         when(jwt.createToken(anyString(), anyString())).thenReturn("jwt-token");
         when(users.save(any(AppUser.class))).thenAnswer(inv -> inv.getArgument(0));
         when(tokens.save(any(PasswordResetToken.class))).thenAnswer(inv -> inv.getArgument(0));
-        when(mail.sendText(anyString(), anyString(), anyString())).thenReturn(false);
+        when(mail.sendHtml(anyString(), anyString(), anyString(), anyString())).thenReturn(false);
         when(shops.findByOwnerUserId(anyString())).thenReturn(java.util.List.of());
         when(shops.findById(anyString())).thenReturn(Optional.empty());
         when(shops.save(any())).thenAnswer(inv -> inv.getArgument(0));
@@ -182,7 +182,7 @@ class AuthPasswordFlowTest {
         passwordReset.requestReset("missing@example.com");
 
         verify(tokens, never()).save(any());
-        verify(mail, never()).sendText(anyString(), anyString(), anyString());
+        verify(mail, never()).sendHtml(anyString(), anyString(), anyString(), anyString());
     }
 
     @Test
@@ -218,7 +218,7 @@ class AuthPasswordFlowTest {
         });
 
         AtomicReference<String> capturedLink = new AtomicReference<>();
-        when(mail.sendText(eq("buyer@example.com"), anyString(), anyString())).thenAnswer(inv -> {
+        when(mail.sendHtml(eq("buyer@example.com"), anyString(), anyString(), anyString())).thenAnswer(inv -> {
             String body = inv.getArgument(2);
             int idx = body.indexOf("http://localhost:3000/reset-password?token=");
             assertTrue(idx >= 0);
@@ -278,6 +278,6 @@ class AuthPasswordFlowTest {
         assertEquals(64, row.getTokenHash().length());
         assertFalse(row.getTokenHash().contains(" "));
         assertNull(row.getUsedAt());
-        verify(mail).sendText(eq("known@example.com"), anyString(), anyString());
+        verify(mail).sendHtml(eq("known@example.com"), anyString(), anyString(), anyString());
     }
 }
